@@ -1,0 +1,398 @@
+Documento de Especificaciones Técnicas y Funcionales (PRD - Product Requirements Document)
+Diseñado específicamente para ser procesado por una Inteligencia Artificial (o un equipo de desarrollo).
+Contiene toda la arquitectura, el rigor matemático, las reglas de negocio y las mejoras propuestas para construir la versión final de Reliarisk FlowCast.
+
+Documento de Especificaciones Técnicas (PRD)
+Proyecto: Reliarisk FlowCast
+Descripción: Plataforma probabilística-estocástica "Cloud-Native" para la estimación de afluencia inicial (IPR) y pronóstico de producción (DCA) en pozos de aceite y gas, basada en Simulación de Montecarlo.
+Stack Tecnológico Requerido: Python (Backend core), Streamlit (Frontend/UI), NumPy & SciPy (Motor Matemático vectorizado), Plotly (Visualización interactiva).
+Hay que considerar que la aplicación debe tener un control de usuario, similar al usado en otras aplicaciones del Grupo Relairisk, como el mostrado en la imagen. Esta imagen corresponde a la Aplicación Llamada QuantX Pro.
+
+El control de usuario se hará desde un archivo Google Sheet que estará en mi OneDrive, lo que se debe considerar para el diseño y desarrollo.
+La aplicación se resguardara en GitHub y podrá ser usada por los usuario por Streamlit.
+
+Arquitectura del Sistema y Flujo de Datos
+La aplicación debe operar bajo una arquitectura de Estado de Sesión (Session State) bidireccional dividida en dos módulos principales (Pestañas/Tabs).
+Módulo I (Afluencia): Calcula el Gasto Inicial (qi) basándose en las propiedades físicas de la roca y el fluido. Genera un vector de N iteraciones.
+Módulo II (Pronóstico): Recibe el vector qi del Módulo I (o una entrada manual) y aplica modelos de declinación a lo largo del tiempo para calcular la Recuperación Final Estimada (EUR) y el perfil de producción q(t).
+
+Especificaciones del Backend (Motor Matemático y Lógica)
+El backend debe estar estrictamente vectorizado con NumPy para garantizar tiempos de respuesta en milisegundos al ejecutar hasta 10,000 iteraciones. Quedan prohibidos los bucles for para iterar sobre las simulaciones de Montecarlo.
+Motor Estadístico y Truncamiento (Requisito Crítico) y carga de datos de entrada
+En la hoja de datos del modelo, el usuario deberá ingresar los valores de entrada para cada una de las variables involucrada en la ecuación (por ejemplo: h, k, Pr, Pwf, µ, Bo, S, rd, rw).
+Existen en general cuatro opciones para la entrada de los datos:
+Opción 1 (Muestra Completa > 15 datos: La aplicación deberá caracterizar probabilísticamente usando la prueba de ajuste de Anderson Darling, considerando como opciones de distribución a probar: Beta, Normal, Lognormal, Weibull, Gamma, Uniforme. Se deberán mostrar los estadísticos característicos de la distribución resultante: Gamma y Weiubull (forma y esacala), Lognormal y Normal (media y desviación estándar), Beta (usar el modelo de cuatro parámetros donde es necesario conocer los dos parámetros de forma α y β, el mínimo y máximo)
+Opción 2 (Muestra Mediana <15 y > 6 datos):  la aplicación estimará del conjunto de datos el percentil 5 y el percentil 95, considerando estos como los percentiles de una distribución lognormal, siendo asignada directamente, sin aplicar pruebas de ajuste.
+Opción 3 (Opinión de Experto Mín.-Mas Prob-Máx): a partir de estos tres parametros, se asignara directamente la distribución BetaPert, considerando los tres datos suministrados por el experto.
+Opción 4 (Opinión de Experto µ, σ): el usuario deberá ingresar una media y desviación estándar estimada, las cuales corresponderán a una distribución lognormal, preseleccionada fuera de la aplicación.
+Opción 5 (Un Valor): El experto debe proporcionar un valor para la variable. El programa considerará este valor como determinístico.
+En caso de existir cualquier error, la aplicación lo indicará a través de mensajes de advertencia.
+En el caso de que el usuario cargue una muestra de mas de 15 datos de la variable de entrada, esta se deberá caracterizar usando la prueba de ajuste de Anderson Darling.
+Todas las variables estocásticas deben generarse a través de un motor central que soporte Muestreo por Transformada Inversa (Inverse Transform Sampling) para aplicar truncamiento físico.
+Distribuciones Soportadas: BetaPERT, Normal, Lognormal, Triangular, Weibull, Gamma, Uniforme y Determinístico.
+Lógica de Truncamiento: Para evitar valores físicamente imposibles (ej. porosidad > 1, permeabilidad < 0), el motor debe calcular la CDF de los límites mínimo y máximo (Pmin, Pmax), generar números uniformes en ese rango, y aplicar la PPF (Percent Point Function) inversa usando scipy.stats.
+Módulo I: Ecuaciones de Afluencia (IPR)
+El sistema debe resolver las siguientes ecuaciones físicas utilizando el Drawdown (∆P = Pr - Pwf) como variable estocástica unificada para evitar incongruencias de presión:
+Modelos para Aceite
+Desviación Histórica:
+El modelo basado en el análisis de la desviación histórica de los estimados del gasto inicial de producción de aceite permite obtener, a partir de un estimado determinístico o puntual del gasto inicial, una distribución de probabilidades del gasto, propagando sobre el valor determinístico la incertidumbre de la desviación histórica.
+
+(Restricción: q ≥ 0)
+Aceite - Darcy (Flujo Radial Pseudo-estable):
+
+(Restricción: q ≥ 0)
+En el sistema Ingles la fórmula es:
+
+Qo: Gasto Inicial de producción en barriles por día, bpd. 
+K: Permeabilidad expresada en mili Darcy, mD 
+h: Espesor de arena neta petrolífera, pies 
+Pr: Presión estática del yacimiento, psi 
+Pwf: Presión de fondo fluyente, psi 
+Bo: Factor volumétrico del aceite, BY/BN
+μ: Viscosidad del aceite (cp).
+Rd: Radio de drenaje del yacimiento pies 
+Rw: Radio del pozo pies 
+S: Factor de daño (Adimensional).
+IPR Darcy - Método Empírico
+
+Qo: Gasto Inicial de producción en barriles por día, bpd. 
+Pr: Presión estática del yacimiento, psi 
+Pwf: Presión de fondo fluyente, psi 
+J: Índice de Productividad, bpd/psi 
+
+IPR Darcy Modificado (YNF)- Método Analítico
+
+
+Qo: Gasto Inicial de producción en barriles por día, bpd. 
+Km: Permeabilidad de la matriz expresada en mili Darcy, mD 
+Kf: Permeabilidad de la fractura expresada en mili Darcy, mD 
+Hd: Espesor de disparo, pies 
+Pws: Presión estática del yacimiento, psi 
+Pwf: Presión de fondo fluyente, psi 
+Bo: Factor volumétrico del aceite, BY/BN
+μo: Viscosidad del aceite (cp).
+Re: Radio de drenaje del yacimiento pies 
+Rw: Radio del pozo pies 
+S: Factor de daño (Adimensional).
+Coef Part: Coeficiente de Partición 
+Φm: porosidad de la matriz (fracción) 
+Φm: porosidad de la fractura (fracción)
+
+Aceite - Vogel (Yacimientos Saturados):
+
+
+Qo: Gasto Inicial de producción en barriles por día, bpd. 
+Qmax: Gasto máximo (AOF), bpd 
+Pr: Presión estática del yacimiento, psi 
+Pwf: Presión de fondo fluyente, psi
+IPR Babu&Obeh (Pozo Horizontal)- Método Analítico
+
+Qo: Gasto Inicial de producción en barriles por día, bpd. 
+Kx y Kz: Permeabilidad para las direcciones perpendicular y paralela a la longitud del pozo horizontal expresada en milidarcy (mD).
+A: Área de Drenaje, Pie2 
+Pr: Presión estática del yacimiento, lpc 
+Pwf: Presión de fondo fluyente, pc 
+Bo: Factor volumétrico del aceite, BY/BN
+μo: Viscosidad del aceite, cp 
+rw: Radio del pozo, pie [m]
+SR: Factor de daño  por penetración parcial (Adimensional).
+Ln CH: Factor de forma según la geometría y configuración espacial del pozo en el área de drenaje.
+IPR Joshi (Pozo Horizontal)- Método Analítico
+
+
+
+
+
+Qo: Gasto Inicial de producción en barriles por día, bpd. 
+Kh: Permeabilidad horizontal expresada en mili Darcy, mD 
+Kv: Permeabilidad vertical expresada en mili Darcy, mD 
+h: Espesor del yacimiento, pies 
+L: Longitud Horizontal, pies   
+Pe: Presión del yacimiento en el límite exterior, psi 
+Pwf: Presión de fondo fluyente, psi 
+Bo: Factor volumétrico del aceite, BY/BN
+μ: Viscosidad del aceite (cp).
+re: Radio de drenaje del yacimiento pies 
+rw: Radio del pozo pies 
+Iani: Índice de anisotropía horizontal a vertical
+Modelos para Gas
+Caudal en Estado Pseudo Estable
+
+Qg: Gasto Inicial de producción de gas en mpcd. 
+K: Permeabilidad expresada en mili Darcy, mD 
+h: Espesor de arena neta petrolífera, pies 
+Pr: Presión estática del yacimiento, psi 
+Pwf: Presión de fondo fluyente, psi 
+μg: Viscosidad del gas (cp).
+Z: Factor de Compresibilidad  del gas (adimensional)
+T: Temperatura (°R) 
+re: Radio de drenaje del yacimiento pies 
+rw: Radio del pozo pies 
+S: Factor de daño (adimensional).
+Gasto en Estado Pseudo Estable para Fracturamiento Hidráulico – Economides
+
+Qg: Gasto Inicial de producción de gas en mpcd. 
+Kg: Permeabilidad expresada en mili Darcy, mD 
+h: Espesor de arena neta petrolífera, pies 
+Pr: Presión estática del yacimiento, psi 
+Pwf: Presión de fondo fluyente, psi 
+μg: Viscosidad del gas (cp).
+Z: Factor de Compresibilidad  del gas (adimensional)
+T: Temperatura (°R) 
+re: Radio de drenaje del yacimiento pies 
+rw: Radio del pozo pies 
+Sf: Efecto de daño equivalente (adimensional).
+
+Para determinar el Sf, debe seguirse el siguiente procedimiento: Se calcula la conductividad adimensional de la fractura (CfD): 
+
+
+Kf = Permeabilidad de la Fractura (md) 
+K = Permeabilidad de formación (md) 
+Xf = Longitud media de la fractura (pies) 
+W = Ancho de la fractura  (pies)
+
+A partir del gráfico de Cinco Ley and Samaniego (Ver Figura 15). Con el valor de CfD se obtiene la relación funcional     
+
+
+
+
+Figura 15. Efecto de Daño Equivalente (Cinco Ley and Samaniego-V, 1981b).Fuente: Libro Reservoir Stimulation in Production de Michael J. Economides. Gráfico 1-11 pagina 1-17.
+Gasto en Estado Estable -Pozo Horizontal – Joshi
+
+Qg: Gasto Inicial de producción de gas en mpcd
+K: Permeabilidad expresada en mili Darcy, mD
+h: Espesor de arena neta petrolífera, pies 
+Pr: Presión estática del yacimiento, psi 
+Pwf: Presión de fondo fluyente, psi 
+μg: Viscosidad del gas (cp)
+Z: Factor de Compresibilidad  del gas (adimensional)
+T: Temperatura (°R)
+reh: Radio horizontal de drenaje,  pies 
+refw: Radio efectivo del pozo horizontal, pies
+S: factor de daño (adimensional)
+rw: radio del pozo, pies
+
+a’: Longitud media del mayor eje del área elíptica de drenaje
+
+
+L: Longitud Horizontal del pozo, pies
+rev: Radio Vertical de drenaje, pies
+
+b’: Longitud media del menor eje del área elíptica de drenaje
+
+
+reh: Radio horizontal de drenaje
+
+a: factor
+
+
+
+refw: Radio Efectivo del pozo horizontal
+
+
+
+Producción Commingled de arenas fracturadas
+En muchos casos los pozos son completados en dos o más zonas, las cuales pueden ser del mismo yacimiento (estratificado), o ser de yacimientos diferentes; estos son puestos en producción simultáneamente a través de la misma tubería, esto es lo que se define como producción conjunta o flujo “Commingled”, la cual tiene como objetivo incrementar la extracción de las reservas de yacimientos de bajo valor económico.
+
+Figura 16. Producción Conjunta.
+
+La siguiente figura muestra las curvas de IPR esquemáticas de cada una de las zonas en consideración, así como una curva de IPR compuesta, construida mediante la suma de las capacidades de todas y cada una de las zonas por individual y la cual debe ser considerada como la máxima productiva del sistema, cabe destacar que para que cada zona aporte a la producción la presión de fondo fluyente debe ser menor a la presión estática de cada una de las zonas.
+
+Figura 17. Curvas IPR como suma de curvas individuales
+
+Mediante la producción conjunta también habrá un incremento del índice de productividad igual a la sumatoria de las productividades de todas las zonas a presiones fluyentes intermedias, pero el incremento de la productividad será a presiones fluyentes bajas, ligeramente menor a la sumatoria de las productividades individuales.
+Donde:                  
+
+  JComp : índice de productividad del flujo conjunto o commingled.
+
+Para calcular la producción conjunta de arenas fracturadas, debe seguirse el procedimiento descrito en el Modelo 2, calculando para ello valores promedios, como se indica a continuación:
+
+Kp = Permeabilidad promedio de las arenas involucradas (md)
+Kpf = Permeabilidad promedio de las fracturas involucradas (md)
+Ps = Presión estática promedio de las formaciones involucradas (lpc)
+Xft = Longitud media promedio de las fracturas involucradas (pie)
+µg = Viscosidad promedio del gas de las arenas involucradas (cps)
+Zt = Factor de compresibilidad promedio de las arenas involucradas (adm)
+Tt = Temperatura promedio de las arenas involucradas (°F)
+Sf t= Efecto promedio de daño equivalente de las fracturas involucradas (adm)
+re = Radio promedio de drenaje de las arenas involucradas (pies)
+rw = Radio del pozo (pies)
+ht = El espesor total, suma de los espesores de las arenas involucradas (pies)
+Pwf= Presión de fondo fluyente resultante (lpc)
+
+Posterior al cálculo de los promedios de las distintas variables se procede a determinar el gasto total según el procedimiento para pozo tipo fracturados hidráulicamente (Ver Gasto en Estado Pseudo Estable para Fracturamiento Hidráulico – Economides)
+Gasto en Estado Estable -Pozo Horizontal con Fractura – Joshi
+
+Qg: Gasto Inicial de producción de gas en mpcd
+K": Ajuste de la Permeabilidad expresada en mili Darcy, mD
+h: Espesor de arena neta petrolífera, pies 
+Pr: Presión estática del yacimiento, psi 
+Pwf: Presión de fondo fluyente, psi 
+μg: Viscosidad del gas (cp)
+Z: Factor de Compresibilidad  del gas (adimensional)
+T: Temperatura (°R)
+reh: Radio horizontal de drenaje,  pies 
+refw: Radio efectivo del pozo horizontal, pies
+S: factor de daño (adimensional)
+rw: radio del pozo, pies
+
+a’: Longitud media del mayor eje del área elíptica de drenaje
+
+
+
+L: Longitud Horizontal del pozo, pies
+rev: Radio Vertical de drenaje, pies
+
+b’: Longitud media del menor eje del área elíptica de drenaje
+
+
+reh: Radio horizontal de drenaje
+
+
+a: factor
+
+
+refw: Radio Efectivo del pozo horizontal
+
+
+Gasto en Estado Estable para Yacimientos Naturalmente Fracturados
+
+Qg: Gasto Inicial de producción de gas en mpcd. 
+Km: Permeabilidad de la matriz expresada en mili Darcy, mD 
+Kf: Permeabilidad de la fractura expresada en mili Darcy, mD 
+h: Espesor de arena neta petrolífera, pies 
+Pr: Presión estática del yacimiento, psi 
+Pwf: Presión de fondo fluyente, psi 
+μg: Viscosidad del gas (cp).
+Z: Factor de Compresibilidad  del gas (adimensional)
+T: Temperatura (°R) 
+re: Radio de drenaje del yacimiento pies 
+rw: Radio del pozo pies 
+S: Factor de daño (adimensional).
+Coef: Coeficiente de Partición
+Modelo de éxito de la Actividad
+Esta estimación se refiere a la incorporación de la probabilidad de éxito o fracaso de la actividad de perforación o reparación mayor de pozos dentro del modelo de análisis. Los registros de actividades de perforación o reparación mayor generalmente muestran evidencias de eventos en los cuales, por desviaciones en el plan de perforación de un pozo no se alcance el objetivo deseado o no se cumpla con la actividad original planificada, bien sea por causas inherentes al yacimiento o por causas operacionales.
+La figura muestra el árbol de eventos que representa como afecta la probabilidad de éxito o fracaso la estimación probabilista del Gasto Inicial. 
+
+
+Figura 18. Modelo de Éxito y Fracaso de la Actividad
+
+Módulo II: Ecuaciones de Pronóstico (DCA)
+Modelos para Aceite
+El pronóstico de producción en el ciclo de vida útil del pozo se obtiene a partir de un gasto inicial, que se “declina” a una velocidad equivalente a un factor (D) conocido como “factor de declinación o velocidad de declinación”. El perfil resultante es también conocido como “curva de declinación del pozo”.
+Las curvas de declinación de producción representan un método dinámico para la estimación de reservas recuperables de un yacimiento y constituyen una herramienta útil y rápida para predecir en forma aproximada la futura capacidad de producción de los pozos, yacimiento y campos. Este procedimiento se fundamenta en que los factores que han afectado la producción en el pasado lo continuarán haciendo en el futuro.
+Para la aplicación del método se debe contar con una historia de producción que permita establecer una tendencia del comportamiento de la producción de los pozos de un yacimiento, lo cual va a permitir realizar una predicción de las reservas remanentes y vida productiva del yacimiento mediante la extrapolación de dicha tendencia. En general se busca un tipo de gráfico que presente un mejor ajuste al comportamiento real del pozo, campo o yacimiento.
+Los modelos más frecuentemente usados para la declinación son:
+Modelo Exponencial.
+Modelo Hiperbólico.
+Modelo Armónico.
+Modelo Lineal.
+Curva de Declinación Exponencial
+Se dice que ocurre una declinación exponencial del gasto de producción cuando la variación del mismo con el tiempo es una constante (expresado en fracción). Matemáticamente, este tipo de declinación se expresa de la siguiente manera:
+
+
+
+Donde:
+q= gasto de producción (bls/día)
+t= tiempo de producción (días)
+D= es la constante de declinación exponencial (1/día)
+
+Curva de Declinación Hiperbólica
+Es aquella donde la variación del inverso de la constante de declinación con tiempo es una constante. La definición matemática de la declinación hiperbólica es la siguiente:
+
+
+Donde:
+
+q= gasto de producción (bls/día)
+t= tiempo de producción (días)
+D= ritmo o velocidad de declinación (1/día)
+b= Exponente Hiperbólico (0<b<1)
+Curva de Declinación Armónica
+La declinación armónica es un caso particular de la declinación hiperbólica cuando b=1
+
+Donde:
+q= gasto de producción (bls/día)
+t= tiempo de producción (días)
+D= ritmo o velocidad de declinación (1/día)
+
+Curva de Declinación Lineal
+El modelo de declinación lineal se representa a través del siguiente modelo matemático:
+
+
+Donde:
+q= gasto de producción (bls/día)
+t= tiempo de producción (días)
+D= ritmo o velocidad de declinación (1/día)
+Modelo de Gas
+El pronóstico de producción en el ciclo de vida útil del pozo se obtiene a partir de un gasto inicial, que se “declina” a una velocidad equivalente a un factor (D) conocido como “factor de declinación o velocidad de declinación”. El perfil resultante es también conocido como “curva de declinación del pozo”.
+Las curvas de declinación de producción representan un método dinámico para la estimación de reservas recuperables de un yacimiento y constituyen una herramienta útil y rápida para predecir en forma aproximada la futura capacidad de producción de los pozos, yacimiento y campos. Este procedimiento se fundamenta en que los factores que han afectado la producción en el pasado lo continuarán haciendo en el futuro.
+Para la aplicación del método se debe contar con una historia de producción que permita establecer una tendencia del comportamiento de la producción de los pozos de un yacimiento, lo cual va a permitir realizar una predicción de las reservas remanentes y vida productiva del yacimiento mediante la extrapolación de dicha tendencia. En general se busca un tipo de gráfico que presente un mejor ajuste al comportamiento real del pozo, campo o yacimiento.
+Entre estos modelos; el más común es el de declinación exponencial. La declinación exponencial del gasto de producción de un pozo o yacimiento, ocurre cuando la variación de la tasa de producción con respecto al tiempo es un valor constante. El modelo para la Declinación Exponencial se muestra a continuación:
+
+Donde:   
+qt : Gasto de producción a un tiempo t, (mmpc/días, mmpc/mes, mmpc/año).
+qgo : Gasto de producción a un tiempo t =0, (mmpc/días, mmpc/mes, mmpc/año).
+Dn : Tasa o Velocidad de declinación nominal (Día-1, mes-1, año-1).
+t :  Tiempo (días, meses, años).    
+
+Como ejemplo puede observarse que el análisis del comportamiento de producción, a los pozos de gas mostrado en la Figura 19 determina que para los pozos en yacimientos fracturados deben considerarse dos factores de declinación:
+
+Figura 19. Comportamiento histórico de la producción en Pozos de Gas
+
+Un factor de declinación mostrado por los pozos en su etapa inicial (T1); es decir, el factor de declinación producto de la fractura hidráulica inducida al yacimiento (D1) 
+Un segundo factor producto de la declinación natural de la matriz del yacimiento (D2) que actúa durante un período (T2).
+Para construir el modelo probabilístico de pronósticos de producción se analizan muestras de comportamientos históricos de producción para pozos del Activo, Área, Campo o Yacimiento, obteniéndose los parámetros estadísticos de los factores de declinación y los periodos de tiempo para cada una de las áreas y campos.  
+La Figura 20 muestra un ejemplo de perfil de producción probabilista en el ciclo de vida útil de los Pozos Tipo, que se obtuvo a partir de la estimación probabilista del gasto  inicial, declinado en dos periodos T1 y T2, con dos velocidades de declinación D1 y D2 respectivamente. Adicionalmente muestra el análisis de sensibilidad realizado al perfil de producción. 
+
+
+Figura 20. Pronóstico Probabilista o Banda Pronóstico de Producción de un Pozo Tipo.
+Para validar estos pronósticos de producción probabilista, las bandas resultantes deben cotejarse con el historial de producción de pozos.
+
+Límite Económico:
+El perfil de producción de cada iteración debe truncarse a 0 si q(t)< qabandono.
+Cálculo de EUR (Acumulada): 
+Integración numérica del vector q(t) considerando días por mes (30.4167).
+
+Especificaciones del Frontend (UI/UX) y Facilidades de Uso
+La interfaz debe ser minimalista, evitando el "exceso de opciones simultáneas", y debe reaccionar en tiempo real.
+Panel Lateral (Sidebar) de Configuración
+Es necesario cargar varia información de suma importancia para direccionar e identificar el análisis, seleccionar el mejor modelo para cargar esta información, que facilite su carga y consulta, pueden ser ventanas desplegables, secciones por cada aspecto de información, o formularios que aparecen para ser rellenados. Se debe seleccionar entre una de ellas o cualquier otra alternativa que se considere como la mas adecuada para cumplir con los mejores estándar de diseño modernos en está área. 
+Integración de Logo corporativo (mi_logo) en la parte superior junto con el Logo de la aplicación (app_logo.png).
+Información general del caso analizado, se desplegar una ventana o sección donde se cargue la siguiente información:
+Región (Area de ubicación del pozo)
+Activo (Nombre del activo de producción al que estará asociado el pozo)
+Fecha del Análisis (fecha en la que se analiza el pozo)
+Analista (nombre de la persona que hace o es responsable del análisis)
+Proyecto (Numero o identificador del pozo)
+Descripción de Pozo (breve descripción del pozo)
+Sistema de Unidades. Estas estimaciones se pueden realizar en dos sistemas de unidades diferentes, lo cual genera pequeñas diferencias (en las contantes) en los modelos matemáticos que se usan para hacer el cálculo. Selección entre Sistema Internacional y Sistema Ingles. La aplicación debe permitir el análisis con Unidades del Sistema Internacional como el Sistema Ingles.
+Controles globales para el Módulo I:
+Selección de fluido: Aceite/Gas
+Modelo de Estimación (relacionados con todos los modelos para Aceite y Gas descritos en el punto 2.2)
+Número de Iteraciones (1,000, 5,000, 10,000), que corresponde a la cantidad de iteraciones de la simulación de Montecarlo, que permitirá la propagación de la incertidumbre en el modelo probabilístico y estocástico.
+Controles globales para el Módulo II:
+Selección de fluido (Aceite/Gas)
+Horizonte de tiempo (años)
+Número de Iteraciones (1,000, 5,000, 10,000), que corresponde a la cantidad de iteraciones de la simulación de Montecarlo, que permitirá la propagación de la incertidumbre en el modelo probabilístico y estocástico.
+Formularios de Entrada y "Tooltips"
+Uso intensivo de st.expander para agrupar variables.
+Tooltips Mandatorios: Cada variable (ej. Permeabilidad, Exponente b) debe tener un ícono de ayuda (help="..." en Streamlit) que explique brevemente el parámetro.
+UI Condicional: Los inputs del Módulo I deben cambiar dinámicamente dependiendo del fluido y el modelo seleccionado (por ejemplo: Darcy vs Vogel).
+Estándares de Visualización (Gráficas Funcionales)
+Se requiere Plotly para asegurar interactividad (Zoom, Pan, Hover).
+Histogramas de Entrada/Salida: Deben mostrar las frecuencias y tener líneas verticales marcando claramente los valores P90 (Rojo/Conservador), P50 (Azul/Base) y P10 (Verde/Optimista).
+Perfil de Producción Probabilístico: * Eje Y debe tener un interruptor (Toggle) para escala Lineal/Logarítmica.
+Debe mostrar el P50 como línea sólida gruesa, P10 y P90 como líneas punteadas, y la media como una línea sólida fina y azul.
+Área Sombreada: Rellenar el área entre P90 y P10 (fill='toself' en Plotly) para representar visualmente el cono de incertidumbre.
+Diagrama de Tornado (Sensibilidad): Calcular la correlación de rango de Spearman entre las variables de entrada (qi, Di, b) y el EUR. Mostrar un gráfico de barras horizontales ordenado de mayor a menor impacto, usando colores divergentes (ej. Rojo para impacto negativo, Azul para positivo).
+
+Mejoras Propuestas a Implementar por la IA Desarrolladora
+Al generar el código final, la IA debe incluir obligatoriamente las siguientes mejoras que complementan el desarrollo previo:
+Mitigación de "Survivorship Bias" (Opción de Normalización):
+Especificación: Permitir cargar un dataset histórico (CSV) opcional para calibrar los rangos de las distribuciones de Di y b usando funciones de ajuste (scipy.optimize.curve_fit).
+Sistema de Caché (Performance):
+Usar @st.cache_data en las funciones matemáticas pesadas de Montecarlo para que la app no recalcule 10,000 iteraciones al cambiar de pestaña (Tab) o al hacer un simple ajuste visual.
+Exportación de Reportes Completos:
+Implementar un botón "Generar Reporte de Decisión". Esto debe tomar los DataFrames de resultados (P10, P50, P90) y exportarlos a un archivo Excel consolidado, permitiendo a los ingenieros presentar los datos directamente a la gerencia.
+
+Instrucción para el Agente/IA Desarrollador: Usa este documento como base arquitectónica. Inicia generando la estructura principal de la aplicación, definiendo el backend matemático vectorizado con las consideraciones de truncamiento, y luego aplica las directrices de UI/UX mediante componentes de Streamlit.
