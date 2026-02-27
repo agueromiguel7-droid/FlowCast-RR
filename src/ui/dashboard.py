@@ -2,7 +2,8 @@ import streamlit as st
 import base64
 from pathlib import Path
 from src.ui.module_ipr import render_ipr_module
-from src.ui.module_dca import render_dca_module # We will create this
+from src.ui.module_dca import render_dca_module
+from src.ui.module_char import render_characterization_module # New Support Module
 
 def get_base64_of_bin_file(bin_file):
     with open(bin_file, 'rb') as f:
@@ -26,9 +27,32 @@ def render_dashboard():
             st.markdown("### Reliarisk FlowCast")
             
         st.markdown("<div style='font-size: 11px; font-weight: bold; color: #a0aec0; margin-bottom: 10px;'>INFORMACIÓN DEL CASO</div>", unsafe_allow_html=True)
+        
+        if 'regiones' not in st.session_state:
+            st.session_state['regiones'] = ["Latam", "Norteamérica", "Europa"]
+        if 'activos' not in st.session_state:
+            st.session_state['activos'] = ["Flow-01", "Vaca Muerta - Bloque A", "Permian"]
+            
         with st.expander("📍 Ubicación", expanded=True):
-            region = st.selectbox("Región", ["Latam", "Norteamérica", "Europa"])
-            activo = st.selectbox("Activo", ["Flow-01", "Vaca Muerta - Bloque A", "Permian"])
+            region_sel = st.selectbox("Región", st.session_state['regiones'] + ["-- Agregar Nueva --"])
+            if region_sel == "-- Agregar Nueva --":
+                region_new = st.text_input("Nueva Región")
+                if region_new and st.button("Guardar Región"):
+                    st.session_state['regiones'].append(region_new)
+                    st.rerun()
+                region = region_new
+            else:
+                region = region_sel
+                
+            activo_sel = st.selectbox("Activo", st.session_state['activos'] + ["-- Agregar Nuevo --"])
+            if activo_sel == "-- Agregar Nuevo --":
+                activo_new = st.text_input("Nuevo Activo")
+                if activo_new and st.button("Guardar Activo"):
+                    st.session_state['activos'].append(activo_new)
+                    st.rerun()
+                activo = activo_new
+            else:
+                activo = activo_sel
             
         with st.expander("📊 Detalles del Análisis"):
             fecha = st.date_input("Fecha")
@@ -39,7 +63,28 @@ def render_dashboard():
         
         st.markdown("<br><div style='font-size: 11px; font-weight: bold; color: #a0aec0; margin-bottom: 10px;'>VARIABLES GLOBALES</div>", unsafe_allow_html=True)
         fluido = st.selectbox("FLUID TYPE", ["Oil", "Gas"])
-        modelo = st.selectbox("MODEL", ["Darcy", "Vogel", "Babu&Odeh", "Joshi", "Economides"])
+        
+        if fluido == "Oil":
+            modelos_disponibles = [
+                "1. Desviación Histórica",
+                "2. IPR Darcy - Método Analítico",
+                "3. IPR Darcy - Método Empírico",
+                "4. IPR Darcy Modificado (YNF) - Método Analítico",
+                "5. IPR-Vogel",
+                "6. IPR Babu&Odeh (Pozo Horizontal) - Método Analítico",
+                "7. IPR Joshi (Pozo Horizontal) - Método Analítico"
+            ]
+        else:
+            modelos_disponibles = [
+                "8. Caudal en Estado Pseudo Estable",
+                "9. Gasto en Estado Pseudo Estable para Fracturamiento Hidráulico - Economides",
+                "10. Gasto en Estado Estable - Pozo Horizontal - Joshi",
+                "11. Producción Commingled de arenas fracturadas",
+                "12. Gasto en Estado Estable - Pozo Horizontal con Fractura - Joshi",
+                "13. Gasto en Estado Estable para Yacimientos Naturalmente Fracturados"
+            ]
+            
+        modelo = st.selectbox("MODEL", modelos_disponibles)
         
         st.markdown("<div style='font-size: 11px; font-weight: bold; color: #a0aec0; margin-bottom: 10px; margin-top: 15px;'>SIMULACIÓN (ITERACIONES)</div>", unsafe_allow_html=True)
         iteraciones_str = st.radio("Iteraciones", ["1k", "5k", "10k"], horizontal=True, label_visibility="collapsed")
@@ -63,10 +108,13 @@ def render_dashboard():
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 5px;'>", unsafe_allow_html=True)
     
     # Custom Tabs
-    tab1, tab2 = st.tabs(["Módulo I: Afluencia (IPR)", "Módulo II: Pronóstico (DCA)"])
+    tab0, tab1, tab2 = st.tabs(["[Soporte] Módulo 0: Caracterización", "Módulo I: Afluencia (IPR)", "Módulo II: Pronóstico (DCA)"])
     
     sys_str = "english" if sistema_unidades == "Inglés" else "international"
     
+    with tab0:
+        render_characterization_module()
+        
     with tab1:
         render_ipr_module(fluido, modelo, iteraciones, sys_str)
         
