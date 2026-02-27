@@ -11,8 +11,8 @@ def apply_global_styles():
         
         /* Hide Default Streamlit UI elements for a cleaner desktop look */
         #MainMenu {visibility: hidden;}
-        header {visibility: hidden;}
         footer {visibility: hidden;}
+
         
         /* Login Card Container */
         .login-card {
