@@ -34,21 +34,21 @@ def render_ipr_module(fluid_type, model_type, iterations, system):
         # Definir configuraciones de variables por modelo
         model_reqs = {
             "1. Desviación Histórica": {"Roca": [], "Fluido": [], "Presiones": ['q_det', 'fact_desv'], "Latex": r"q_i = Q_{hist} \pm ( Q_{hist} \cdot f_{desv} )"},
-            "2. IPR Darcy - Método Analítico": {"Roca": ['perm', 'h'], "Fluido": ['visc', 'bo'], "Presiones": ['pr', 'pwf', 're', 'rw', 'skin'], "Latex": r"q_o = \dots"},
-            "3. IPR Darcy - Método Empírico": {"Roca": ['j'], "Fluido": [], "Presiones": ['pr', 'pwf'], "Latex": r"q_o = J \cdot (P_r - P_{wf})"},
-            "4. IPR Darcy Modificado (YNF) - Método Analítico": {"Roca": ['perm', 'kf', 'poro_m', 'poro_f', 'h'], "Fluido": ['visc', 'bo'], "Presiones": ['pr', 'pwf', 're', 'rw', 'skin'], "Latex": r"q_o = \dots"},
-            "5. IPR-Vogel": {"Roca": [], "Fluido": [], "Presiones": ['qtest', 'pwf_test', 'pr', 'pwf'], "Latex": r"\frac{q_o}{q_{max}} = \dots"},
-            "6. IPR Babu&Odeh (Pozo Horizontal) - Método Analítico": {"Roca": ['kx', 'kz', 'h'], "Fluido": ['visc', 'bo'], "Presiones": ['pr', 'pwf', 'area', 'len', 'rw'], "Latex": r"q_o = \dots"},
-            "7. IPR Joshi (Pozo Horizontal) - Método Analítico": {"Roca": ['kh', 'kv', 'h'], "Fluido": ['visc', 'bo'], "Presiones": ['pr', 'pwf', 'len', 're', 'rw'], "Latex": r"q_o = \dots"},
-            "8. Caudal en Estado Pseudo Estable": {"Roca": ['perm', 'h'], "Fluido": ['visc', 'z', 't'], "Presiones": ['pr', 'pwf', 're', 'rw', 'skin'], "Latex": r"q_g = \dots"},
-            "9. Gasto en Estado Pseudo Estable para Fracturamiento Hidráulico - Economides": {"Roca": ['perm', 'kf', 'wf', 'xf', 'h'], "Fluido": ['visc', 'z', 't'], "Presiones": ['pr', 'pwf', 're', 'rw'], "Latex": r"q_g = \dots"},
-            "10. Gasto en Estado Estable - Pozo Horizontal - Joshi": {"Roca": ['kh', 'kv', 'h'], "Fluido": ['visc', 'z', 't'], "Presiones": ['pr', 'pwf', 'len', 're', 'rw', 'skin'], "Latex": r"q_g = \dots"},
-            "11. Producción Commingled de arenas fracturadas": {"Roca": ['perm', 'h'], "Fluido": ['visc', 'z', 't'], "Presiones": ['pr', 'pwf', 're', 'rw', 'skin'], "Latex": r"\text{Suma}"},
-            "12. Gasto en Estado Estable - Pozo Horizontal con Fractura - Joshi": {"Roca": ['kh', 'kv', 'h'], "Fluido": ['visc', 'z', 't'], "Presiones": ['pr', 'pwf', 'len', 're', 'rw', 'skin'], "Latex": r"q_g = \dots"},
-            "13. Gasto en Estado Estable para Yacimientos Naturalmente Fracturados": {"Roca": ['perm', 'kf', 'poro_m', 'poro_f', 'h'], "Fluido": ['visc', 'z', 't'], "Presiones": ['pr', 'pwf', 're', 'rw', 'skin'], "Latex": r"q_g = \dots"}
+            "2. IPR Darcy - Método Analítico": {"Roca": ['perm', 'h'], "Fluido": ['visc', 'bo'], "Presiones": ['dp', 're', 'rw', 'skin'], "Latex": r"q_o = \dots"},
+            "3. IPR Darcy - Método Empírico": {"Roca": ['j'], "Fluido": [], "Presiones": ['dp'], "Latex": r"q_o = J \cdot (P_r - P_{wf})"},
+            "4. IPR Darcy Modificado (YNF) - Método Analítico": {"Roca": ['perm', 'kf', 'poro_m', 'poro_f', 'h'], "Fluido": ['visc', 'bo'], "Presiones": ['dp', 're', 'rw', 'skin'], "Latex": r"q_o = \dots"},
+            "5. IPR-Vogel": {"Roca": [], "Fluido": [], "Presiones": ['qtest', 'dp_test', 'pr_test', 'dp', 'pr'], "Latex": r"\frac{q_o}{q_{max}} = \dots"},
+            "6. IPR Babu&Odeh (Pozo Horizontal) - Método Analítico": {"Roca": ['kx', 'kz', 'h'], "Fluido": ['visc', 'bo'], "Presiones": ['dp', 'area', 'len', 'rw'], "Latex": r"q_o = \dots"},
+            "7. IPR Joshi (Pozo Horizontal) - Método Analítico": {"Roca": ['kh', 'kv', 'h'], "Fluido": ['visc', 'bo'], "Presiones": ['dp', 'len', 're', 'rw'], "Latex": r"q_o = \dots"},
+            "8. Caudal en Estado Pseudo Estable": {"Roca": ['perm', 'h'], "Fluido": ['visc', 'z', 't'], "Presiones": ['dp2', 're', 'rw', 'skin'], "Latex": r"q_g = \dots"},
+            "9. Gasto en Estado Pseudo Estable para Fracturamiento Hidráulico - Economides": {"Roca": ['perm', 'kf', 'wf', 'xf', 'h'], "Fluido": ['visc', 'z', 't'], "Presiones": ['dp2', 're', 'rw'], "Latex": r"q_g = \dots"},
+            "10. Gasto en Estado Estable - Pozo Horizontal - Joshi": {"Roca": ['kh', 'kv', 'h'], "Fluido": ['visc', 'z', 't'], "Presiones": ['dp2', 'len', 're', 'rw', 'skin'], "Latex": r"q_g = \dots"},
+            "11. Producción Commingled de arenas fracturadas": {"Roca": ['perm', 'h'], "Fluido": ['visc', 'z', 't'], "Presiones": ['dp2', 're', 'rw', 'skin'], "Latex": r"\text{Suma}"},
+            "12. Gasto en Estado Estable - Pozo Horizontal con Fractura - Joshi": {"Roca": ['kh', 'kv', 'h'], "Fluido": ['visc', 'z', 't'], "Presiones": ['dp2', 'len', 're', 'rw', 'skin'], "Latex": r"q_g = \dots"},
+            "13. Gasto en Estado Estable para Yacimientos Naturalmente Fracturados": {"Roca": ['perm', 'kf', 'poro_m', 'poro_f', 'h'], "Fluido": ['visc', 'z', 't'], "Presiones": ['dp2', 're', 'rw', 'skin'], "Latex": r"q_g = \dots"}
         }
         
-        reqs = model_reqs.get(model_type, {"Roca": ['perm', 'h'], "Fluido": ['visc', 'bo', 'z', 't'], "Presiones": ['pr', 'pwf', 're', 'rw', 'skin'], "Latex": ""})
+        reqs = model_reqs.get(model_type, {"Roca": ['perm', 'h'], "Fluido": ['visc', 'bo', 'z', 't'], "Presiones": ['dp', 're', 'rw', 'skin'], "Latex": ""})
         
         if reqs["Latex"]:
             st.markdown("<div style='font-size: 13px; color: #718096; font-weight: bold;'>Modelo Matemático:</div>", unsafe_allow_html=True)
@@ -81,10 +81,12 @@ def render_ipr_module(fluid_type, model_type, iterations, system):
             
         if reqs["Presiones"]:
             with st.expander("Presiones y Otros", expanded=True):
-                if 'pr' in reqs["Presiones"]: inputs_data['pr'] = st_distribution_input("Presión Yac. Pr (psi)", 3000.0, "pr")
-                if 'pwf' in reqs["Presiones"]: inputs_data['pwf'] = st_distribution_input("Presión Pwf (psi)", 2000.0, "pwf")
-                if 'pwf_test' in reqs["Presiones"]: inputs_data['pwf_test'] = st_distribution_input("Pwf Prueba (psi)", 2500.0, "pwf_test")
-                if 'qtest' in reqs["Presiones"]: inputs_data['qtest'] = st_distribution_input("Gasto Prueba Qtest", 500.0, "qtest")
+                if 'dp' in reqs["Presiones"]: inputs_data['dp'] = st_distribution_input("Diferencial Pr - Pwf (psi)", 1000.0, "dp")
+                if 'dp2' in reqs["Presiones"]: inputs_data['dp2'] = st_distribution_input("Diferencial Pr² - Pwf² (psi²)", 5000000.0, "dp2")
+                if 'pr' in reqs["Presiones"]: inputs_data['pr'] = st_distribution_input("Presión Yacimiento Pr (psi)", 3000.0, "pr")
+                if 'pr_test' in reqs["Presiones"]: inputs_data['pr_test'] = st_distribution_input("Presión Yacimiento Pr (Test) [psi]", 3000.0, "pr_test")
+                if 'dp_test' in reqs["Presiones"]: inputs_data['dp_test'] = st_distribution_input("Diferencial Pr - Pwf (Test) [psi]", 500.0, "dp_test")
+                if 'qtest' in reqs["Presiones"]: inputs_data['qtest'] = st_distribution_input("Gasto de Prueba Qtest", 500.0, "qtest")
                 if 're' in reqs["Presiones"]: inputs_data['re'] = st_distribution_input("Radio de Drenaje (ft)", 1500.0, "re")
                 if 'rw' in reqs["Presiones"]: inputs_data['rw'] = st_distribution_input("Radio de Pozo (ft)", 0.328, "rw")
                 if 'skin' in reqs["Presiones"]: inputs_data['skin'] = st_distribution_input("Daño (Skin)", 0.0, "skin")
@@ -124,27 +126,27 @@ def render_ipr_module(fluid_type, model_type, iterations, system):
                     if "Desviación Histórica" in model_type:
                         q_sim = ipr_aceite_desviacion_historica(vecs['q_det'], vecs['fact_desv'])
                     elif "2." in model_type:
-                        q_sim = ipr_aceite_darcy(vecs['perm'], vecs['h'], vecs['pr'], vecs['pwf'], vecs['bo'], vecs['visc'], vecs['re'], vecs['rw'], vecs['skin'], sys_arg)
+                        q_sim = ipr_aceite_darcy(vecs['perm'], vecs['h'], vecs['dp'], vecs['bo'], vecs['visc'], vecs['re'], vecs['rw'], vecs['skin'], sys_arg)
                     elif "3." in model_type:
-                        q_sim = ipr_aceite_darcy_empirico(vecs['j'], vecs['pr'], vecs['pwf'])
+                        q_sim = ipr_aceite_darcy_empirico(vecs['j'], vecs['dp'])
                     elif "4." in model_type:
-                        q_sim = ipr_aceite_darcy_ynf(vecs['perm'], vecs['kf'], vecs['poro_m'], vecs['poro_f'], vecs['h'], vecs['pr'], vecs['pwf'], vecs['bo'], vecs['visc'], vecs['re'], vecs['rw'], vecs['skin'], sys_arg)
+                        q_sim = ipr_aceite_darcy_ynf(vecs['perm'], vecs['kf'], vecs['poro_m'], vecs['poro_f'], vecs['h'], vecs['dp'], vecs['bo'], vecs['visc'], vecs['re'], vecs['rw'], vecs['skin'], sys_arg)
                     elif "5." in model_type:
-                        q_sim = ipr_aceite_vogel(vecs['qtest'], vecs['pwf_test'], vecs['pr'], vecs['pwf'])
+                        q_sim = ipr_aceite_vogel(vecs['qtest'], vecs['dp_test'], vecs['pr_test'], vecs['dp'], vecs['pr'])
                     elif "6." in model_type:
-                        q_sim = ipr_aceite_babu_odeh(vecs['kx'], vecs['kz'], vecs['L'], vecs['area'], vecs['pr'], vecs['pwf'], vecs['bo'], vecs['visc'], vecs['rw'], sys_arg)
+                        q_sim = ipr_aceite_babu_odeh(vecs['kx'], vecs['kz'], vecs['L'], vecs['area'], vecs['dp'], vecs['bo'], vecs['visc'], vecs['rw'], sys_arg)
                     elif "7." in model_type:
-                        q_sim = ipr_aceite_joshi(vecs['kh'], vecs['kv'], vecs['h'], vecs['L'], vecs['pr'], vecs['pwf'], vecs['bo'], vecs['visc'], vecs['re'], vecs['rw'], sys_arg)
+                        q_sim = ipr_aceite_joshi(vecs['kh'], vecs['kv'], vecs['h'], vecs['L'], vecs['dp'], vecs['bo'], vecs['visc'], vecs['re'], vecs['rw'], sys_arg)
                     elif "8." in model_type:
-                        q_sim = ipr_gas_pseudo_estable(vecs['perm'], vecs['h'], vecs['pr'], vecs['pwf'], vecs['visc'], vecs['z'], vecs['t'], vecs['re'], vecs['rw'], vecs['skin'], sys_arg)
+                        q_sim = ipr_gas_pseudo_estable(vecs['perm'], vecs['h'], vecs['dp2'], vecs['visc'], vecs['z'], vecs['t'], vecs['re'], vecs['rw'], vecs['skin'], sys_arg)
                     elif "9." in model_type:
-                        q_sim = ipr_gas_economides(vecs['perm'], vecs['kf'], vecs['wf'], vecs['xf'], vecs['h'], vecs['pr'], vecs['pwf'], vecs['visc'], vecs['z'], vecs['t'], vecs['re'], vecs['rw'], sys_arg)
+                        q_sim = ipr_gas_economides(vecs['perm'], vecs['kf'], vecs['wf'], vecs['xf'], vecs['h'], vecs['dp2'], vecs['visc'], vecs['z'], vecs['t'], vecs['re'], vecs['rw'], sys_arg)
                     elif "10." in model_type or "12." in model_type:
-                        q_sim = ipr_gas_joshi_horizontal(vecs['kh'], vecs['kv'], vecs['h'], vecs['L'], vecs['pr'], vecs['pwf'], vecs['visc'], vecs['z'], vecs['t'], vecs['re'], vecs['rw'], vecs.get('skin', 0), sys_arg)
+                        q_sim = ipr_gas_joshi_horizontal(vecs['kh'], vecs['kv'], vecs['h'], vecs['L'], vecs['dp2'], vecs['visc'], vecs['z'], vecs['t'], vecs['re'], vecs['rw'], vecs.get('skin', 0), sys_arg)
                     elif "11." in model_type:
-                        q_sim = ipr_gas_pseudo_estable(vecs['perm'], vecs['h'], vecs['pr'], vecs['pwf'], vecs['visc'], vecs['z'], vecs['t'], vecs['re'], vecs['rw'], vecs['skin'], sys_arg)
+                        q_sim = ipr_gas_pseudo_estable(vecs['perm'], vecs['h'], vecs['dp2'], vecs['visc'], vecs['z'], vecs['t'], vecs['re'], vecs['rw'], vecs['skin'], sys_arg)
                     elif "13." in model_type:
-                        q_sim = ipr_gas_ynf(vecs['perm'], vecs['kf'], vecs['poro_m'], vecs['poro_f'], vecs['h'], vecs['pr'], vecs['pwf'], vecs['visc'], vecs['z'], vecs['t'], vecs['re'], vecs['rw'], vecs['skin'], sys_arg)
+                        q_sim = ipr_gas_ynf(vecs['perm'], vecs['kf'], vecs['poro_m'], vecs['poro_f'], vecs['h'], vecs['dp2'], vecs['visc'], vecs['z'], vecs['t'], vecs['re'], vecs['rw'], vecs['skin'], sys_arg)
                     
                     q_sim = q_sim[np.isfinite(q_sim)]
                     
@@ -193,8 +195,8 @@ def render_ipr_module(fluid_type, model_type, iterations, system):
                         </div>
                         """, unsafe_allow_html=True)
                         with c2:
-                            dd_medio = np.mean(vecs.get('pr', np.array([1]))) - np.mean(vecs.get('pwf', np.array([0])))
-                            if 'drawdown' in vecs: dd_medio = np.mean(vecs['drawdown'])
+                            dd_medio = np.mean(vecs.get('dp', np.array([1])))
+                            if 'dp2' in vecs: dd_medio = np.sqrt(np.mean(vecs['dp2'])) # un proxy para mantener sentido de Indice J
                             j_index = mean_q / dd_medio if dd_medio > 0 else 0
                             st.markdown(f"""
                             <div style="background-color: white; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0;">
