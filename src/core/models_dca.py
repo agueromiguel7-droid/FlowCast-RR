@@ -87,10 +87,28 @@ def calcular_eur_mensual(perfil_q_t_bpd):
     eur = np.sum(vol_mensual, axis=1)
     return eur
 
-def generar_perfil_montecarlo(qi_vec, D_vec, b_vec, t_steps, modelo="exponencial", q_abandono=0.0):
+def generar_perfil_etapa(qi, D, b, t, modelo):
+    if modelo.lower() in ["exponencial", "exponential", "declinación exponencial"]:
+        return dca_exponencial(qi, D, t)
+    elif "hiperb" in modelo.lower() or "hyperb" in modelo.lower():
+        # Prevent zero or negative b
+        b_safe = np.where(b <= 0.001, 0.001, b)
+        return dca_hiperbolica(qi, D, b_safe, t)
+    elif "arm" in modelo.lower() or "harm" in modelo.lower():
+        return dca_armonica(qi, D, t)
+    elif "lineal" in modelo.lower() or "linear" in modelo.lower():
+        return dca_lineal(qi, D, t)
+    else:
+        return np.zeros_like(qi * t)
+
+def generar_perfil_montecarlo(qi_vec, t_steps, 
+                              etapas=1, 
+                              modelo1="exponencial", D1_vec=None, b1_vec=None, T1_vec=None,
+                              modelo2="exponencial", D2_vec=None, b2_vec=None,
+                              q_abandono=0.0):
     """
-    Aplica el modelo de DCA para Montecarlo.
-    qi_vec, D_vec, b_vec: vectores 1D de tamaño N (iteraciones)
+    Aplica el modelo de DCA para Montecarlo. Permite 1 o 2 etapas de declinación.
+    qi_vec: vector 1D de tamaño N (iteraciones)
     t_steps: vector 1D de tamaño M (tiempo, ej. meses)
     Retorna:
     - perfil_2d: matriz (N, M) con perfiles q(t)
@@ -100,25 +118,32 @@ def generar_perfil_montecarlo(qi_vec, D_vec, b_vec, t_steps, modelo="exponencial
     M = t_steps.shape[0]
     
     # Usamos numpy broadcasting.
-    # qi_vec (N,) -> (N, 1)
     qi = qi_vec[:, np.newaxis]
-    D = D_vec[:, np.newaxis]
-    if b_vec is not None:
-        b = b_vec[:, np.newaxis]
-    # t_steps (M,) -> (1, M)
+    D1 = D1_vec[:, np.newaxis] if D1_vec is not None else np.zeros((N, 1))
+    b1 = b1_vec[:, np.newaxis] if b1_vec is not None else np.zeros((N, 1))
     t = t_steps[np.newaxis, :]
     
-    if modelo.lower() == "exponencial":
-        q_t = dca_exponencial(qi, D, t)
-    elif modelo.lower() == "hiperbolica":
-        q_t = dca_hiperbolica(qi, D, b, t)
-    elif modelo.lower() == "armonica":
-        q_t = dca_armonica(qi, D, t)
-    elif modelo.lower() == "lineal":
-        q_t = dca_lineal(qi, D, t)
+    if etapas == 1:
+        q_t = generar_perfil_etapa(qi, D1, b1, t, modelo1)
     else:
-        q_t = np.zeros((N, M))
+        T1 = T1_vec[:, np.newaxis] if T1_vec is not None else np.full((N, 1), M)
+        D2 = D2_vec[:, np.newaxis] if D2_vec is not None else np.zeros((N, 1))
+        b2 = b2_vec[:, np.newaxis] if b2_vec is not None else np.zeros((N, 1))
         
+        # Fase 1
+        q_t_1 = generar_perfil_etapa(qi, D1, b1, t, modelo1)
+        
+        # Gasto inicial de la Fase 2 es el q_t evaluado en T1 (con el modelo 1)
+        qi_2 = generar_perfil_etapa(qi, D1, b1, T1, modelo1)
+        
+        # Fase 2
+        t_fase2 = np.maximum(0.0, t - T1)
+        q_t_2 = generar_perfil_etapa(qi_2, D2, b2, t_fase2, modelo2)
+        
+        # Ensamblar matriz usando máscara
+        mask_1 = t <= T1
+        q_t = np.where(mask_1, q_t_1, q_t_2)
+
     q_t = calcular_y_truncar_perfil(q_t, q_abandono)
     eur = calcular_eur_mensual(q_t)
     

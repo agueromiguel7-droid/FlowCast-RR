@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from scipy import stats
 from src.core.montecarlo import generate_montecarlo
 from src.core.models_dca import generar_perfil_montecarlo
+from src.ui.components import st_distribution_input
 
 def calculate_spearman_correlation(inputs_dict, output_vec):
     """Calcula la correlación de Spearman para el Tornado Plot"""
@@ -27,21 +28,87 @@ def render_dca_module(fluido, iteraciones):
     col_perfil, col_tornado = st.columns([2.5, 1])
     
     with col_perfil:
-        st.markdown("<div style='font-weight: bold; font-size: 16px; margin-bottom: 10px;'>Perfil de Producción Probabilístico</div>", unsafe_allow_html=True)
-        # Controles
+        st.markdown("<div style='font-weight: bold; font-size: 16px; margin-bottom: 10px;'>Configuración de Pronóstico (DCA)</div>", unsafe_allow_html=True)
         q_abandono = st.number_input("Límite Económico (q_abandono, bbl/d)", value=20.0, step=5.0)
-        
-        # Simulación de variables para DCA
-        # Asumiendo inputs default para la demostración
-        t_years = 20
+        t_years = st.number_input("Horizonte de Pronóstico (Años)", value=20, step=1)
         t_steps = np.arange(1, t_years * 12 + 1) # Meses
         
-        # Generar inputs probabilísticos
-        qi_sim = generate_montecarlo(iteraciones, 'normal', {'mu': 1240, 'sigma': 124})
-        D_sim = generate_montecarlo(iteraciones, 'uniforme', {'min': 0.05, 'max': 0.15}) / 12.0 # tasa mensual
-        b_sim = generate_montecarlo(iteraciones, 'uniforme', {'min': 0.3, 'max': 0.8})
+        st.markdown("<hr style='margin: 10px 0px;'>", unsafe_allow_html=True)
         
-        q_t, eur = generar_perfil_montecarlo(qi_sim, D_sim, b_sim, t_steps, modelo="hiperbolica", q_abandono=q_abandono)
+        # --- FUENTE DE QI ---
+        fuente_qi = st.radio("Fuente de Gasto Inicial ($q_i$)", ["Vincular con Módulo I", "Definir Manualmente"], horizontal=True)
+        n_iters_dca = iteraciones
+        
+        if fuente_qi == "Vincular con Módulo I":
+            if 'qi_sim' in st.session_state and st.session_state['qi_sim'] is not None:
+                qi_sim = st.session_state['qi_sim']
+                n_iters_dca = len(qi_sim)
+                st.success(f"Vinculado a {n_iters_dca} simulaciones válidas del Módulo I.")
+            else:
+                st.warning("No hay datos del Módulo I en la sesión. Generando 1000 bpd por defecto.")
+                qi_sim = np.full(n_iters_dca, 1000.0)
+        else:
+            with st.expander("Distribución de Gasto Inicial ($q_i$)", expanded=True):
+                dist_qi, params_qi = st_distribution_input("Gasto Inicial", 1000.0, "qi_man")
+                min_qi = params_qi.pop('min_limit', None)
+                max_qi = params_qi.pop('max_limit', None)
+                qi_sim = generate_montecarlo(n_iters_dca, dist_qi, params_qi, min_limit=min_qi, max_limit=max_qi)
+
+        # --- ETAPAS DE DECLINACIÓN ---
+        st.markdown("<hr style='margin: 10px 0px;'>", unsafe_allow_html=True)
+        etapas = st.radio("Número de Etapas de Declinación", [1, 2], horizontal=True)
+        
+        with st.expander("Etapa 1: Configuración de Declinación", expanded=True):
+            modelo1 = st.selectbox("Modelo Etapa 1", ["Exponencial", "Hiperbólica", "Armónica", "Lineal"], key="mod1")
+            dist_D1, params_D1 = st_distribution_input("Tasa D1 (%/año o bbd/año)", 15.0, "d1")
+            min_D1 = params_D1.pop('min_limit', None)
+            max_D1 = params_D1.pop('max_limit', None)
+            D1_sim = generate_montecarlo(n_iters_dca, dist_D1, params_D1, min_limit=min_D1, max_limit=max_D1)
+            if modelo1.lower() != "lineal":
+                D1_sim = D1_sim / 100.0 / 12.0
+            
+            b1_sim = None
+            if "hiperb" in modelo1.lower():
+                dist_b1, params_b1 = st_distribution_input("Exponente b1", 0.5, "b1")
+                min_b1 = params_b1.pop('min_limit', None)
+                max_b1 = params_b1.pop('max_limit', None)
+                b1_sim = generate_montecarlo(n_iters_dca, dist_b1, params_b1, min_limit=min_b1, max_limit=max_b1)
+                
+            T1_sim = None
+            if etapas == 2:
+                st.markdown("<br>", unsafe_allow_html=True)
+                dist_T1, params_T1 = st_distribution_input("Duración Máxima Etapa 1 (Meses)", 24.0, "t1")
+                min_T1 = params_T1.pop('min_limit', None)
+                max_T1 = params_T1.pop('max_limit', None)
+                T1_sim = generate_montecarlo(n_iters_dca, dist_T1, params_T1, min_limit=min_T1, max_limit=max_T1)
+
+        modelo2, D2_sim, b2_sim = "exponencial", None, None
+        if etapas == 2:
+            with st.expander("Etapa 2: Configuración de Declinación", expanded=True):
+                modelo2 = st.selectbox("Modelo Etapa 2", ["Exponencial", "Hiperbólica", "Armónica", "Lineal"], key="mod2")
+                dist_D2, params_D2 = st_distribution_input("Tasa D2 (%/año o bbd/año)", 8.0, "d2")
+                min_D2 = params_D2.pop('min_limit', None)
+                max_D2 = params_D2.pop('max_limit', None)
+                D2_sim = generate_montecarlo(n_iters_dca, dist_D2, params_D2, min_limit=min_D2, max_limit=max_D2)
+                if modelo2.lower() != "lineal":
+                    D2_sim = D2_sim / 100.0 / 12.0
+                    
+                if "hiperb" in modelo2.lower():
+                    dist_b2, params_b2 = st_distribution_input("Exponente b2", 0.3, "b2")
+                    min_b2 = params_b2.pop('min_limit', None)
+                    max_b2 = params_b2.pop('max_limit', None)
+                    b2_sim = generate_montecarlo(n_iters_dca, dist_b2, params_b2, min_limit=min_b2, max_limit=max_b2)
+
+        D_sim = D1_sim
+        b_sim = b1_sim if b1_sim is not None else np.zeros(n_iters_dca)
+                
+        q_t, eur = generar_perfil_montecarlo(
+            qi_sim, t_steps, 
+            etapas=etapas, 
+            modelo1=modelo1, D1_vec=D1_sim, b1_vec=b1_sim, T1_vec=T1_sim,
+            modelo2=modelo2, D2_vec=D2_sim, b2_vec=b2_sim,
+            q_abandono=q_abandono
+        )
         
         # Calcular percentiles EUR
         eur_p90 = np.percentile(eur, 10) / 1000 # MBBL
