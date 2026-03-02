@@ -33,7 +33,7 @@ def generate_montecarlo(iterations: int, dist_type: str, params: dict, min_limit
     params: Diccionario que contiene los parámetros específicos de la distribución.
     min_limit, max_limit: Límites de truncamiento físico.
     """
-    if dist_type.lower() == 'deterministico':
+    if dist_type.lower() in ['deterministico', 'determinístico']:
         val = params.get('value', 0)
         return np.full(iterations, val)
         
