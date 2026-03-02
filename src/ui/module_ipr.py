@@ -15,6 +15,7 @@ from src.core.models_ipr import (
     ipr_gas_joshi_horizontal,
     ipr_gas_ynf
 )
+from src.ui.components import st_distribution_input
 from src.core.stats import fit_all_distributions, DISTRIBUTIONS
 
 def render_ipr_module(fluid_type, model_type, iterations, system):
