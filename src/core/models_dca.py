@@ -88,6 +88,8 @@ def calcular_eur_mensual(perfil_q_t_bpd):
     return eur
 
 def generar_perfil_etapa(qi, D, b, t, modelo):
+    qi = np.maximum(qi, 0.0)
+    D = np.maximum(D, 0.0)
     if modelo.lower() in ["exponencial", "exponential", "declinación exponencial"]:
         return dca_exponencial(qi, D, t)
     elif "hiperb" in modelo.lower() or "hyperb" in modelo.lower():

@@ -183,8 +183,7 @@ def render_dca_module(fluido, iteraciones):
             plot_bgcolor='white',
             xaxis_title='Tiempo (Meses)',
             yaxis_title='Gasto (BBL/D)',
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            yaxis_type="log" # Logarítmico por defecto, normalmente útil en DCA
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         st.plotly_chart(fig, use_container_width=True)
         
