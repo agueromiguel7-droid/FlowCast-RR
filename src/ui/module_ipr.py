@@ -173,21 +173,28 @@ def render_ipr_module(fluid_type, model_type, iterations, system):
                         mapped_params = {}
                         if dist_name == "Normal":
                             mapped_params = {'mu': raw_params[0], 'sigma': raw_params[1]}
+                            clean_name = "Normal"
                         elif dist_name == "Lognormal (2P)":
                             mapped_params = {'mu': np.log(raw_params[2]), 'sigma': raw_params[0]}
+                            clean_name = "Lognormal"
                         elif dist_name == "Weibull (2P)":
                             mapped_params = {'shape': raw_params[0], 'scale': raw_params[2]}
+                            clean_name = "Weibull"
                         elif dist_name == "Gamma (2P)":
                             mapped_params = {'shape': raw_params[0], 'scale': raw_params[2]}
+                            clean_name = "Gamma"
                         elif dist_name == "Exponential (1P)":
                             mapped_params = {'scale': raw_params[1]}
+                            clean_name = "Exponencial"
                         elif dist_name == "Triangular":
                             c, loc, scale = raw_params
                             mapped_params = {'min': loc, 'mode': loc + c*scale, 'max': loc + scale}
+                            clean_name = "Triangular"
                         elif dist_name == "Beta":
                             mapped_params = {'alpha': raw_params[0], 'beta': raw_params[1], 'min': raw_params[2], 'max': raw_params[2]+raw_params[3]}
+                            clean_name = "Beta"
                         
-                        st.session_state['qi_best_dist'] = dist_name.split(" ")[0].capitalize() if "2P" in dist_name or "1P" in dist_name else dist_name
+                        st.session_state['qi_best_dist'] = clean_name
                         st.session_state['qi_best_params'] = mapped_params
                         
                         with st.expander("ℹ️ Caracterización Estocástica del Gasto Inicial", expanded=False):
