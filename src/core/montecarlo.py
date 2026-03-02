@@ -74,6 +74,17 @@ def generate_montecarlo(iterations: int, dist_type: str, params: dict, min_limit
         alpha, beta = get_betapert_params(min_v, ml_v, max_v)
         dist_obj = stats.beta(a=alpha, b=beta, loc=min_v, scale=max_v - min_v)
         
+    elif dist_type.lower() in ['exponencial', 'exponential']:
+        scale = params['scale']
+        dist_obj = stats.expon(scale=scale)
+        
+    elif dist_type.lower() == 'beta':
+        alpha, beta = params['alpha'], params['beta']
+        min_v, max_v = params['min'], params['max']
+        if max_v == min_v:
+             return np.full(iterations, min_v)
+        dist_obj = stats.beta(a=alpha, b=beta, loc=min_v, scale=max_v - min_v)
+        
     else:
         raise ValueError(f"Distribución {dist_type} no soportada.")
 
