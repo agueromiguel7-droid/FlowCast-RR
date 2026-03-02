@@ -15,8 +15,7 @@ from src.core.models_ipr import (
     ipr_gas_joshi_horizontal,
     ipr_gas_ynf
 )
-from src.ui.components import st_distribution_input
-from src.core.stats import fit_all_distributions
+from src.core.stats import fit_all_distributions, DISTRIBUTIONS
 
 def render_ipr_module(fluid_type, model_type, iterations, system):
     st.markdown("### Módulo I: Cálculo de Producción Inicial ($q_i$)")
@@ -207,11 +206,24 @@ def render_ipr_module(fluid_type, model_type, iterations, system):
                     fig = go.Figure()
                     fig.add_trace(go.Histogram(
                         x=q_sim, 
-                        histnorm='probability',
+                        histnorm='probability density',
                         marker_color='#cbd5e0',
                         opacity=0.75,
                         name='Frecuencia'
                     ))
+                    
+                    if not fit_df.empty:
+                        best_dist_name = fit_df.iloc[0]['Distribution']
+                        best_dist_params = fit_df.iloc[0]['_params_obj']
+                        dist_obj = DISTRIBUTIONS[best_dist_name]
+                        x_pdf = np.linspace(np.min(q_sim), np.max(q_sim), 200)
+                        y_pdf = dist_obj.pdf(x_pdf, *best_dist_params)
+                        fig.add_trace(go.Scatter(
+                            x=x_pdf, y=y_pdf,
+                            mode='lines',
+                            line=dict(color='#2d3748', width=2),
+                            name=f'Ajuste {best_dist_name}'
+                        ))
                     
                     fig.add_vline(x=p90, line_dash="solid", line_color="#e53e3e", annotation_text=f"<b>P90</b><br>{int(p90)}", annotation_position="top left", annotation_font_color="#e53e3e")
                     fig.add_vline(x=p50, line_dash="solid", line_color="#3182ce", annotation_text=f"<b>P50</b><br>{int(p50)}", annotation_position="top left", annotation_font_color="#3182ce")
@@ -223,8 +235,9 @@ def render_ipr_module(fluid_type, model_type, iterations, system):
                         margin=dict(l=20, r=20, t=30, b=20),
                         plot_bgcolor='white',
                         xaxis_title=f'Gasto Inicial ({unidad_q})',
-                        yaxis_title='Frecuencia Probabilística',
-                        showlegend=False,
+                        yaxis_title='Densidad de Probabilidad',
+                        showlegend=True,
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                         height=500,
                         xaxis=dict(showgrid=True, gridcolor='#edf2f7'),
                         yaxis=dict(showgrid=True, gridcolor='#edf2f7', showticklabels=False)
@@ -258,6 +271,64 @@ def render_ipr_module(fluid_type, model_type, iterations, system):
                             <div style="color: #2b6cb0; font-size: 24px; font-weight: bold;">{int(p10 - p90):,}</div>
                         </div>
                         """, unsafe_allow_html=True)
+                    
+                    # Sensibilidad (Spearman)
+                    st.markdown("<hr style='margin: 30px 0px;'>", unsafe_allow_html=True)
+                    st.markdown("""
+                    <div style="font-weight: bold; color: #2d3748; font-size: 18px;">Sensibilidad (Spearman)</div>
+                    <div style="color: #718096; font-size: 13px; margin-bottom: 20px;">Impacto de las variables de entrada en el Gasto Inicial</div>
+                    """, unsafe_allow_html=True)
+                    
+                    corrs = {}
+                    import scipy.stats as scipy_stats
+                    for k_name, v_array in vecs.items():
+                        if isinstance(v_array, np.ndarray) and len(v_array) > 1 and np.std(v_array) > 0:
+                            corr, _ = scipy_stats.spearmanr(v_array, q_sim)
+                            if not np.isnan(corr):
+                                corrs[k_name] = corr
+                    
+                    if corrs:
+                        sorted_corrs = dict(sorted(corrs.items(), key=lambda item: abs(item[1])))
+                        labels = list(sorted_corrs.keys())
+                        values = list(sorted_corrs.values())
+                        colors = ['#e53e3e' if v < 0 else '#3182ce' for v in values]
+                        
+                        fig2 = go.Figure(go.Bar(
+                            x=values,
+                            y=labels,
+                            orientation='h',
+                            marker_color=colors,
+                            text=[f"{v:.2f}" for v in values],
+                            textposition='outside'
+                        ))
+                        fig2.update_layout(
+                            margin=dict(l=10, r=30, t=10, b=10),
+                            plot_bgcolor='white',
+                            xaxis=dict(showgrid=True, gridcolor='#edf2f7', range=[-1.1, 1.1], zeroline=True, zerolinecolor='black'),
+                            height=300
+                        )
+                        st.plotly_chart(fig2, use_container_width=True)
+                        
+                    # Calculadora Probabilística
+                    if not fit_df.empty:
+                        st.markdown("<hr style='margin: 30px 0px;'>", unsafe_allow_html=True)
+                        st.markdown("""
+                        <div style="font-weight: bold; color: #2d3748; font-size: 18px;">Calculadora (Percentiles y Valores)</div>
+                        <div style="color: #718096; font-size: 13px; margin-bottom: 20px;">Relación probabilística basada en la distribución ajustada</div>
+                        """, unsafe_allow_html=True)
+                        
+                        calc_c1, calc_c2 = st.columns(2)
+                        with calc_c1:
+                            st.markdown("<div style='font-size: 14px; font-weight: 500; color: #4a5568;'>Percentil → Valor (PPF)</div>", unsafe_allow_html=True)
+                            p_input = st.number_input("Percentil (%)", min_value=0.01, max_value=99.99, value=50.0, step=1.0, key="calc_p")
+                            calc_val = dist_obj.ppf(p_input / 100.0, *best_dist_params)
+                            st.success(f"Valor estimado a P{p_input}: **{calc_val:.2f} {unidad_q}**")
+                            
+                        with calc_c2:
+                            st.markdown("<div style='font-size: 14px; font-weight: 500; color: #4a5568;'>Valor → Percentil (CDF)</div>", unsafe_allow_html=True)
+                            v_input = st.number_input(f"Valor de la Variable ({unidad_q})", value=float(mean_q), step=10.0, key="calc_v")
+                            calc_perc = dist_obj.cdf(v_input, *best_dist_params) * 100.0
+                            st.info(f"Percentil estimado: **{calc_perc:.4f}%**")
                 except Exception as e:
                     st.error(f"Error procesando la simulación: {str(e)}")
         else:
