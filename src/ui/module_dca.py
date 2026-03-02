@@ -40,12 +40,21 @@ def render_dca_module(fluido, iteraciones):
         n_iters_dca = iteraciones
         
         if fuente_qi == "Vincular con Módulo I":
-            if 'qi_sim' in st.session_state and st.session_state['qi_sim'] is not None:
-                qi_sim = st.session_state['qi_sim']
-                n_iters_dca = len(qi_sim)
-                st.success(f"Vinculado a {n_iters_dca} simulaciones válidas del Módulo I.")
+            if 'qi_best_dist' in st.session_state and st.session_state['qi_best_dist'] is not None:
+                b_dist = st.session_state['qi_best_dist']
+                b_params = st.session_state['qi_best_params'].copy()
+                st.success(f"Vinculado a la Caracterización del Módulo I: **{b_dist}**.")
+                
+                with st.expander("Distribución de Gasto Inicial ($q_i$)", expanded=True):
+                    st.json(b_params)
+                    st.markdown("<div style='font-size: 11px; color: gray;'>Límites de Truncamiento físicos Módulo I (Opcional)</div>", unsafe_allow_html=True)
+                    c3, c4 = st.columns(2)
+                    t_min = c3.number_input("Mínimo", value=None, key="lnk_tmin")
+                    t_max = c4.number_input("Máximo", value=None, key="lnk_tmax")
+                    
+                    qi_sim = generate_montecarlo(n_iters_dca, b_dist, b_params, min_limit=t_min, max_limit=t_max)
             else:
-                st.warning("No hay datos del Módulo I en la sesión. Generando 1000 bpd por defecto.")
+                st.warning("No hay caracterización del Módulo I en la memoria. Generando 1000 bpd por defecto.")
                 qi_sim = np.full(n_iters_dca, 1000.0)
         else:
             with st.expander("Distribución de Gasto Inicial ($q_i$)", expanded=True):

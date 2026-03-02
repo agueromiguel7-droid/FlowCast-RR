@@ -16,6 +16,7 @@ from src.core.models_ipr import (
     ipr_gas_ynf
 )
 from src.ui.components import st_distribution_input
+from src.core.stats import fit_all_distributions
 
 def render_ipr_module(fluid_type, model_type, iterations, system):
     st.markdown("### Módulo I: Cálculo de Producción Inicial ($q_i$)")
@@ -161,6 +162,39 @@ def render_ipr_module(fluid_type, model_type, iterations, system):
                     p50 = np.percentile(q_sim, 50)
                     p10 = np.percentile(q_sim, 90)
                     mean_q = np.mean(q_sim)
+                    
+                    # Caracterizar la distribución de q_sim
+                    fit_df = fit_all_distributions(q_sim)
+                    if not fit_df.empty:
+                        best_row = fit_df.iloc[0]
+                        dist_name = best_row['Distribution']
+                        raw_params = best_row['_params_obj']
+                        
+                        mapped_params = {}
+                        if dist_name == "Normal":
+                            mapped_params = {'mu': raw_params[0], 'sigma': raw_params[1]}
+                        elif dist_name == "Lognormal (2P)":
+                            mapped_params = {'mu': np.log(raw_params[2]), 'sigma': raw_params[0]}
+                        elif dist_name == "Weibull (2P)":
+                            mapped_params = {'shape': raw_params[0], 'scale': raw_params[2]}
+                        elif dist_name == "Gamma (2P)":
+                            mapped_params = {'shape': raw_params[0], 'scale': raw_params[2]}
+                        elif dist_name == "Exponential (1P)":
+                            mapped_params = {'scale': raw_params[1]}
+                        elif dist_name == "Triangular":
+                            c, loc, scale = raw_params
+                            mapped_params = {'min': loc, 'mode': loc + c*scale, 'max': loc + scale}
+                        elif dist_name == "Beta":
+                            mapped_params = {'alpha': raw_params[0], 'beta': raw_params[1], 'min': raw_params[2], 'max': raw_params[2]+raw_params[3]}
+                        
+                        st.session_state['qi_best_dist'] = dist_name.split(" ")[0].capitalize() if "2P" in dist_name or "1P" in dist_name else dist_name
+                        st.session_state['qi_best_params'] = mapped_params
+                        
+                        with st.expander("ℹ️ Caracterización Estocástica del Gasto Inicial", expanded=False):
+                            st.markdown(f"**Mejor Ajuste (Anderson-Darling):** {dist_name}")
+                            st.json(mapped_params)
+                    
+                    st.session_state['qi_sim'] = q_sim
                     
                     # Plotly Histogram
                     fig = go.Figure()
