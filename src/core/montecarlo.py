@@ -6,13 +6,24 @@ def get_betapert_params(min_val, most_likely, max_val, l=4):
     Calcula los parámetros alpha y beta para una distribución BetaPERT.
     """
     mu = (min_val + l * most_likely + max_val) / (l + 2)
-    alpha = ((mu - min_val) * (2 * most_likely - min_val - max_val)) / \
-            ((most_likely - mu) * (max_val - min_val))
-    beta = (alpha * (max_val - mu)) / (mu - min_val)
+    
+    # Manejar el caso de distribución simétrica o donde most_likely == mu o min_val == max_val
+    if np.isclose(most_likely, mu) or np.isclose(max_val, min_val) or np.isclose(mu, min_val):
+        alpha = 1 + l * (most_likely - min_val) / (max_val - min_val) if not np.isclose(max_val, min_val) else 1.0
+        beta = 1 + l * (max_val - most_likely) / (max_val - min_val) if not np.isclose(max_val, min_val) else 1.0
+    else:
+        try:
+            alpha = ((mu - min_val) * (2 * most_likely - min_val - max_val)) / \
+                    ((most_likely - mu) * (max_val - min_val))
+            beta = (alpha * (max_val - mu)) / (mu - min_val)
+        except ZeroDivisionError:
+            alpha, beta = np.nan, np.nan
+
     # Forma alternativa estándar si la anterior presenta inestabilidad:
     if np.isnan(alpha) or np.isnan(beta) or alpha <= 0 or beta <= 0:
-         alpha = 1 + l * (most_likely - min_val) / (max_val - min_val)
-         beta = 1 + l * (max_val - most_likely) / (max_val - min_val)
+         alpha = 1 + l * (most_likely - min_val) / (max_val - min_val) if not np.isclose(max_val, min_val) else 1.0
+         beta = 1 + l * (max_val - most_likely) / (max_val - min_val) if not np.isclose(max_val, min_val) else 1.0
+         
     return alpha, beta
 
 def generate_montecarlo(iterations: int, dist_type: str, params: dict, min_limit=None, max_limit=None):
