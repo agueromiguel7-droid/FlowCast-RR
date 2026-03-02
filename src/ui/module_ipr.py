@@ -121,7 +121,7 @@ def render_ipr_module(fluid_type, model_type, iterations, system):
                         vecs[k_name] = v
 
                     q_sim = np.zeros(iterations)
-                    sys_arg = 'english' if system == 'Inglés' else 'international'
+                    sys_arg = system # Ya viene como 'english' o 'international' desde dashboard.py
                     
                     if "Desviación Histórica" in model_type:
                         q_sim = ipr_aceite_desviacion_historica(vecs['q_det'], vecs['fact_desv'])
