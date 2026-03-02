@@ -116,6 +116,12 @@ def render_ipr_module(fluid_type, model_type, iterations, system):
                         if 'poro' in k_name or 'fact_desv' in k_name: min_lim, max_lim = 0.0, 100.0
                         if k_name in ['perm', 'kh', 'kv', 'kx', 'kz', 'kf', 'h', 'rw', 're', 'visc', 'area', 'L', 'wf']: min_lim = 0.001
                         
+                        user_min = d_params.pop('min_limit', None)
+                        user_max = d_params.pop('max_limit', None)
+                        
+                        if user_min is not None: min_lim = user_min
+                        if user_max is not None: max_lim = user_max
+                        
                         v = generate_montecarlo(iterations, d_type, d_params, min_limit=min_lim, max_limit=max_lim)
                         if 'poro' in k_name or 'fact_desv' in k_name: v = v / 100.0 
                         vecs[k_name] = v

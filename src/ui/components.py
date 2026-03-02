@@ -26,12 +26,20 @@ def st_distribution_input(label, default_val, key_prefix):
         c1, c2 = st.columns(2)
         mu = c1.number_input("Media (ln)", value=0.0, key=f"{key_prefix}_mu")
         sigma = c2.number_input("Desv. Est. (ln)", value=1.0, key=f"{key_prefix}_sigma")
-        params = {'mu': mu, 'sigma': sigma}
+        st.markdown("<div style='font-size: 11px; color: gray;'>Límites de Truncamiento físicos (Opcional)</div>", unsafe_allow_html=True)
+        c3, c4 = st.columns(2)
+        t_min = c3.number_input("Mínimo", value=None, key=f"{key_prefix}_tmin")
+        t_max = c4.number_input("Máximo", value=None, key=f"{key_prefix}_tmax")
+        params = {'mu': mu, 'sigma': sigma, 'min_limit': t_min, 'max_limit': t_max}
     elif dist_type == "Normal":
         c1, c2 = st.columns(2)
         mu = c1.number_input("Media", value=float(default_val), key=f"{key_prefix}_mu")
         sigma = c2.number_input("Desv. Est.", value=float(default_val*0.1), key=f"{key_prefix}_sigma")
-        params = {'mu': mu, 'sigma': sigma}
+        st.markdown("<div style='font-size: 11px; color: gray;'>Límites de Truncamiento físicos (Opcional)</div>", unsafe_allow_html=True)
+        c3, c4 = st.columns(2)
+        t_min = c3.number_input("Mínimo", value=None, key=f"{key_prefix}_tmin")
+        t_max = c4.number_input("Máximo", value=None, key=f"{key_prefix}_tmax")
+        params = {'mu': mu, 'sigma': sigma, 'min_limit': t_min, 'max_limit': t_max}
     elif dist_type == "Triangular":
         c1, c2, c3 = st.columns(3)
         min_v = c1.number_input("Mín", value=float(default_val*0.8), key=f"{key_prefix}_min")
@@ -42,12 +50,20 @@ def st_distribution_input(label, default_val, key_prefix):
         c1, c2 = st.columns(2)
         shape = c1.number_input("Forma (k)", value=1.5, key=f"{key_prefix}_shape")
         scale = c2.number_input("Escala (lambda)", value=float(default_val), key=f"{key_prefix}_scale")
-        params = {'shape': shape, 'scale': scale}
+        st.markdown("<div style='font-size: 11px; color: gray;'>Límites de Truncamiento físicos (Opcional)</div>", unsafe_allow_html=True)
+        c3, c4 = st.columns(2)
+        t_min = c3.number_input("Mínimo", value=None, key=f"{key_prefix}_tmin")
+        t_max = c4.number_input("Máximo", value=None, key=f"{key_prefix}_tmax")
+        params = {'shape': shape, 'scale': scale, 'min_limit': t_min, 'max_limit': t_max}
     elif dist_type == "Gamma":
         c1, c2 = st.columns(2)
         shape = c1.number_input("Forma (k)", value=2.0, key=f"{key_prefix}_shape")
         scale = c2.number_input("Escala (theta)", value=float(default_val/2.0), key=f"{key_prefix}_scale")
-        params = {'shape': shape, 'scale': scale}
+        st.markdown("<div style='font-size: 11px; color: gray;'>Límites de Truncamiento físicos (Opcional)</div>", unsafe_allow_html=True)
+        c3, c4 = st.columns(2)
+        t_min = c3.number_input("Mínimo", value=None, key=f"{key_prefix}_tmin")
+        t_max = c4.number_input("Máximo", value=None, key=f"{key_prefix}_tmax")
+        params = {'shape': shape, 'scale': scale, 'min_limit': t_min, 'max_limit': t_max}
         
     st.markdown("<hr style='margin: 10px 0px;'>", unsafe_allow_html=True)
     
