@@ -15,7 +15,18 @@ def render_dashboard():
     with st.sidebar:
         # Logo and Title
         logo_path = Path("mi_logo.png")
-        if logo_path.exists():
+        app_logo_path = Path("app_logo.png")
+        
+        if logo_path.exists() and app_logo_path.exists():
+            img_b64 = get_base64_of_bin_file(logo_path)
+            app_img_b64 = get_base64_of_bin_file(app_logo_path)
+            st.markdown(f'''
+            <div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin-bottom: 20px;">
+                <img src="data:image/png;base64,{img_b64}" height="70" style="object-fit: contain;">
+                <img src="data:image/png;base64,{app_img_b64}" height="70" style="object-fit: contain;">
+            </div>
+            ''', unsafe_allow_html=True)
+        elif logo_path.exists():
             img_b64 = get_base64_of_bin_file(logo_path)
             st.markdown(f'''
             <div style="display: flex; align-items: center; margin-bottom: 20px;">
@@ -24,7 +35,7 @@ def render_dashboard():
             </div>
             ''', unsafe_allow_html=True)
         else:
-            st.markdown("### Reliarisk FlowCast")
+            st.markdown("### Reliarisk FlowCast", unsafe_allow_html=True)
             
         st.markdown("<div style='font-size: 11px; font-weight: bold; color: #a0aec0; margin-bottom: 10px;'>INFORMACIÓN DEL CASO</div>", unsafe_allow_html=True)
         
