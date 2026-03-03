@@ -165,120 +165,6 @@ def render_ipr_module(fluid_type, model_type, iterations, system):
                     
                     # Caracterizar la distribución de q_sim
                     fit_df = fit_all_distributions(q_sim)
-                    if not fit_df.empty:
-                        best_row = fit_df.iloc[0]
-                        dist_name = best_row['Distribution']
-                        raw_params = best_row['_params_obj']
-                        
-                        mapped_params = {}
-                        if dist_name == "Normal":
-                            mapped_params = {'mu': raw_params[0], 'sigma': raw_params[1]}
-                            clean_name = "Normal"
-                        elif dist_name == "Lognormal (2P)":
-                            mapped_params = {'mu': np.log(raw_params[2]), 'sigma': raw_params[0]}
-                            clean_name = "Lognormal"
-                        elif dist_name == "Weibull (2P)":
-                            mapped_params = {'shape': raw_params[0], 'scale': raw_params[2]}
-                            clean_name = "Weibull"
-                        elif dist_name == "Gamma (2P)":
-                            mapped_params = {'shape': raw_params[0], 'scale': raw_params[2]}
-                            clean_name = "Gamma"
-                        elif dist_name == "Exponential (1P)":
-                            mapped_params = {'scale': raw_params[1]}
-                            clean_name = "Exponencial"
-                        elif dist_name == "Triangular":
-                            c, loc, scale = raw_params
-                            mapped_params = {'min': loc, 'mode': loc + c*scale, 'max': loc + scale}
-                            clean_name = "Triangular"
-                        elif dist_name == "Beta":
-                            mapped_params = {'alpha': raw_params[0], 'beta': raw_params[1], 'min': raw_params[2], 'max': raw_params[2]+raw_params[3]}
-                            clean_name = "Beta"
-                        
-                        st.session_state['qi_best_dist'] = clean_name
-                        st.session_state['qi_best_params'] = mapped_params
-                        
-                        with st.expander("ℹ️ Caracterización Estocástica del Gasto Inicial", expanded=False):
-                            st.markdown(f"**Mejor Ajuste (Anderson-Darling):** {dist_name}")
-                            st.json(mapped_params)
-                    
-                    st.session_state['qi_sim'] = q_sim
-                    
-                    # Plotly Histogram
-                    fig = go.Figure()
-                    fig.add_trace(go.Histogram(
-                        x=q_sim, 
-                        histnorm='probability density',
-                        marker_color='#cbd5e0',
-                        opacity=0.75,
-                        name='Frecuencia'
-                    ))
-                    
-                    if not fit_df.empty:
-                        best_dist_name = fit_df.iloc[0]['Distribution']
-                        best_dist_params = fit_df.iloc[0]['_params_obj']
-                        dist_obj = DISTRIBUTIONS[best_dist_name]
-                        x_pdf = np.linspace(np.min(q_sim), np.max(q_sim), 200)
-                        y_pdf = dist_obj.pdf(x_pdf, *best_dist_params)
-                        fig.add_trace(go.Scatter(
-                            x=x_pdf, y=y_pdf,
-                            mode='lines',
-                            line=dict(color='#2d3748', width=2),
-                            name=f'Ajuste {best_dist_name}'
-                        ))
-                    
-                    fig.add_vline(x=p90, line_dash="solid", line_color="#e53e3e", annotation_text=f"<b>P90</b><br>{int(p90)}", annotation_position="top left", annotation_font_color="#e53e3e")
-                    fig.add_vline(x=p50, line_dash="solid", line_color="#3182ce", annotation_text=f"<b>P50</b><br>{int(p50)}", annotation_position="top left", annotation_font_color="#3182ce")
-                    fig.add_vline(x=p10, line_dash="solid", line_color="#38a169", annotation_text=f"<b>P10</b><br>{int(p10)}", annotation_position="top left", annotation_font_color="#38a169")
-                    
-                    unidad_q = "STB/d" if fluid_type == "Oil" else "MCF/d"
-                    
-                    fig.update_layout(
-                        margin=dict(l=20, r=20, t=30, b=20),
-                        plot_bgcolor='white',
-                        xaxis_title=f'Gasto Inicial ({unidad_q})',
-                        yaxis_title='Densidad de Probabilidad',
-                        showlegend=True,
-                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                        height=500,
-                        xaxis=dict(showgrid=True, gridcolor='#edf2f7'),
-                        yaxis=dict(showgrid=True, gridcolor='#edf2f7', showticklabels=False)
-                    )
-                    
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Tarjetas inferiores
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        st.markdown(f"""
-                        <div style="background-color: white; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0;">
-                            <div style="color: #718096; font-size: 11px; font-weight: bold; margin-bottom: 5px;">PROMEDIO (MEDIA)</div>
-                            <div style="color: #2b6cb0; font-size: 24px; font-weight: bold;">{int(mean_q):,} <span style="font-size: 14px;">{unidad_q}</span></div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        with c2:
-                            dd_medio = np.mean(vecs.get('dp', np.array([1])))
-                            if 'dp2' in vecs: dd_medio = np.sqrt(np.mean(vecs['dp2'])) # un proxy para mantener sentido de Indice J
-                            j_index = mean_q / dd_medio if dd_medio > 0 else 0
-                            st.markdown(f"""
-                            <div style="background-color: white; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0;">
-                                <div style="color: #718096; font-size: 11px; font-weight: bold; margin-bottom: 5px;">ÍNDICE DE PRODUCTIVIDAD</div>
-                                <div style="color: #2b6cb0; font-size: 24px; font-weight: bold;">{j_index:.1f} <span style="font-size: 14px;">J</span></div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    with c3:
-                        st.markdown(f"""
-                        <div style="background-color: white; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0;">
-                            <div style="color: #718096; font-size: 11px; font-weight: bold; margin-bottom: 5px;">RANGO DE CONFIANZA</div>
-                            <div style="color: #2b6cb0; font-size: 24px; font-weight: bold;">{int(p10 - p90):,}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # Sensibilidad (Spearman)
-                    st.markdown("<hr style='margin: 30px 0px;'>", unsafe_allow_html=True)
-                    st.markdown("""
-                    <div style="font-weight: bold; color: #2d3748; font-size: 18px;">Sensibilidad (Spearman)</div>
-                    <div style="color: #718096; font-size: 13px; margin-bottom: 20px;">Impacto de las variables de entrada en el Gasto Inicial</div>
-                    """, unsafe_allow_html=True)
                     
                     corrs = {}
                     import scipy.stats as scipy_stats
@@ -287,50 +173,193 @@ def render_ipr_module(fluid_type, model_type, iterations, system):
                             corr, _ = scipy_stats.spearmanr(v_array, q_sim)
                             if not np.isnan(corr):
                                 corrs[k_name] = corr
+
+                    unidad_q = "STB/d" if fluid_type == "Oil" else "MCF/d"
                     
-                    if corrs:
-                        sorted_corrs = dict(sorted(corrs.items(), key=lambda item: abs(item[1])))
-                        labels = list(sorted_corrs.keys())
-                        values = list(sorted_corrs.values())
-                        colors = ['#e53e3e' if v < 0 else '#3182ce' for v in values]
-                        
-                        fig2 = go.Figure(go.Bar(
-                            x=values,
-                            y=labels,
-                            orientation='h',
-                            marker_color=colors,
-                            text=[f"{v:.2f}" for v in values],
-                            textposition='outside'
-                        ))
-                        fig2.update_layout(
-                            margin=dict(l=10, r=30, t=10, b=10),
-                            plot_bgcolor='white',
-                            xaxis=dict(showgrid=True, gridcolor='#edf2f7', range=[-1.1, 1.1], zeroline=True, zerolinecolor='black'),
-                            height=300
-                        )
-                        st.plotly_chart(fig2, use_container_width=True)
-                        
-                    # Calculadora Probabilística
-                    if not fit_df.empty:
-                        st.markdown("<hr style='margin: 30px 0px;'>", unsafe_allow_html=True)
-                        st.markdown("""
-                        <div style="font-weight: bold; color: #2d3748; font-size: 18px;">Calculadora (Percentiles y Valores)</div>
-                        <div style="color: #718096; font-size: 13px; margin-bottom: 20px;">Relación probabilística basada en la distribución ajustada</div>
-                        """, unsafe_allow_html=True)
-                        
-                        calc_c1, calc_c2 = st.columns(2)
-                        with calc_c1:
-                            st.markdown("<div style='font-size: 14px; font-weight: 500; color: #4a5568;'>Percentil → Valor (PPF)</div>", unsafe_allow_html=True)
-                            p_input = st.number_input("Percentil (%)", min_value=0.01, max_value=99.99, value=50.0, step=1.0, key="calc_p")
-                            calc_val = dist_obj.ppf(p_input / 100.0, *best_dist_params)
-                            st.success(f"Valor estimado a P{p_input}: **{calc_val:.2f} {unidad_q}**")
-                            
-                        with calc_c2:
-                            st.markdown("<div style='font-size: 14px; font-weight: 500; color: #4a5568;'>Valor → Percentil (CDF)</div>", unsafe_allow_html=True)
-                            v_input = st.number_input(f"Valor de la Variable ({unidad_q})", value=float(mean_q), step=10.0, key="calc_v")
-                            calc_perc = dist_obj.cdf(v_input, *best_dist_params) * 100.0
-                            st.info(f"Percentil estimado: **{calc_perc:.4f}%**")
+                    st.session_state['ipr_calc_results'] = {
+                        'q_sim': q_sim,
+                        'fit_df': fit_df,
+                        'p90': p90,
+                        'p50': p50,
+                        'p10': p10,
+                        'mean_q': mean_q,
+                        'vecs': vecs,
+                        'unidad_q': unidad_q,
+                        'corrs': corrs,
+                        'fluid_type': fluid_type
+                    }
+
                 except Exception as e:
                     st.error(f"Error procesando la simulación: {str(e)}")
+                    if 'ipr_calc_results' in st.session_state:
+                         del st.session_state['ipr_calc_results']
+
+        if 'ipr_calc_results' in st.session_state:
+            res = st.session_state['ipr_calc_results']
+            q_sim = res['q_sim']
+            fit_df = res['fit_df']
+            p90 = res['p90']
+            p50 = res['p50']
+            p10 = res['p10']
+            mean_q = res['mean_q']
+            vecs = res['vecs']
+            unidad_q = res['unidad_q']
+            corrs = res['corrs']
+
+            if not fit_df.empty:
+                best_row = fit_df.iloc[0]
+                dist_name = best_row['Distribution']
+                raw_params = best_row['_params_obj']
+                
+                mapped_params = {}
+                if dist_name == "Normal":
+                    mapped_params = {'mu': raw_params[0], 'sigma': raw_params[1]}
+                    clean_name = "Normal"
+                elif dist_name == "Lognormal (2P)":
+                    mapped_params = {'mu': np.log(raw_params[2]), 'sigma': raw_params[0]}
+                    clean_name = "Lognormal"
+                elif dist_name == "Weibull (2P)":
+                    mapped_params = {'shape': raw_params[0], 'scale': raw_params[2]}
+                    clean_name = "Weibull"
+                elif dist_name == "Gamma (2P)":
+                    mapped_params = {'shape': raw_params[0], 'scale': raw_params[2]}
+                    clean_name = "Gamma"
+                elif dist_name == "Exponential (1P)":
+                    mapped_params = {'scale': raw_params[1]}
+                    clean_name = "Exponencial"
+                elif dist_name == "Triangular":
+                    c, loc, scale = raw_params
+                    mapped_params = {'min': loc, 'mode': loc + c*scale, 'max': loc + scale}
+                    clean_name = "Triangular"
+                elif dist_name == "Beta":
+                    mapped_params = {'alpha': raw_params[0], 'beta': raw_params[1], 'min': raw_params[2], 'max': raw_params[2]+raw_params[3]}
+                    clean_name = "Beta"
+                
+                st.session_state['qi_best_dist'] = clean_name
+                st.session_state['qi_best_params'] = mapped_params
+                
+                with st.expander("ℹ️ Caracterización Estocástica del Gasto Inicial", expanded=False):
+                    st.markdown(f"**Mejor Ajuste (Anderson-Darling):** {dist_name}")
+                    st.json(mapped_params)
+            
+            st.session_state['qi_sim'] = q_sim
+            
+            # Plotly Histogram
+            fig = go.Figure()
+            fig.add_trace(go.Histogram(
+                x=q_sim, 
+                histnorm='probability density',
+                marker_color='#cbd5e0',
+                opacity=0.75,
+                name='Frecuencia'
+            ))
+            
+            if not fit_df.empty:
+                best_dist_name = fit_df.iloc[0]['Distribution']
+                best_dist_params = fit_df.iloc[0]['_params_obj']
+                dist_obj = DISTRIBUTIONS[best_dist_name]
+                x_pdf = np.linspace(np.min(q_sim), np.max(q_sim), 200)
+                y_pdf = dist_obj.pdf(x_pdf, *best_dist_params)
+                fig.add_trace(go.Scatter(
+                    x=x_pdf, y=y_pdf,
+                    mode='lines',
+                    line=dict(color='#2d3748', width=2),
+                    name=f'Ajuste {best_dist_name}'
+                ))
+            
+            fig.add_vline(x=p90, line_dash="solid", line_color="#e53e3e", annotation_text=f"<b>P90</b><br>{int(p90)}", annotation_position="top left", annotation_font_color="#e53e3e")
+            fig.add_vline(x=p50, line_dash="solid", line_color="#3182ce", annotation_text=f"<b>P50</b><br>{int(p50)}", annotation_position="top left", annotation_font_color="#3182ce")
+            fig.add_vline(x=p10, line_dash="solid", line_color="#38a169", annotation_text=f"<b>P10</b><br>{int(p10)}", annotation_position="top left", annotation_font_color="#38a169")
+            
+            fig.update_layout(
+                margin=dict(l=20, r=20, t=30, b=20),
+                plot_bgcolor='white',
+                xaxis_title=f'Gasto Inicial ({unidad_q})',
+                yaxis_title='Densidad de Probabilidad',
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                height=500,
+                xaxis=dict(showgrid=True, gridcolor='#edf2f7'),
+                yaxis=dict(showgrid=True, gridcolor='#edf2f7', showticklabels=False)
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Tarjetas inferiores
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown(f"""
+                <div style="background-color: white; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0;">
+                    <div style="color: #718096; font-size: 11px; font-weight: bold; margin-bottom: 5px;">PROMEDIO (MEDIA)</div>
+                    <div style="color: #2b6cb0; font-size: 24px; font-weight: bold;">{int(mean_q):,} <span style="font-size: 14px;">{unidad_q}</span></div>
+                </div>
+                """, unsafe_allow_html=True)
+            with c2:
+                dd_medio = np.mean(vecs.get('dp', np.array([1])))
+                if 'dp2' in vecs: dd_medio = np.sqrt(np.mean(vecs['dp2'])) # un proxy para mantener sentido de Indice J
+                j_index = mean_q / dd_medio if dd_medio > 0 else 0
+                st.markdown(f"""
+                <div style="background-color: white; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0;">
+                    <div style="color: #718096; font-size: 11px; font-weight: bold; margin-bottom: 5px;">ÍNDICE DE PRODUCTIVIDAD</div>
+                    <div style="color: #2b6cb0; font-size: 24px; font-weight: bold;">{j_index:.1f} <span style="font-size: 14px;">J</span></div>
+                </div>
+                """, unsafe_allow_html=True)
+            with c3:
+                st.markdown(f"""
+                <div style="background-color: white; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0;">
+                    <div style="color: #718096; font-size: 11px; font-weight: bold; margin-bottom: 5px;">RANGO DE CONFIANZA</div>
+                    <div style="color: #2b6cb0; font-size: 24px; font-weight: bold;">{int(p10 - p90):,}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Sensibilidad (Spearman)
+            st.markdown("<hr style='margin: 30px 0px;'>", unsafe_allow_html=True)
+            st.markdown("""
+            <div style="font-weight: bold; color: #2d3748; font-size: 18px;">Sensibilidad (Spearman)</div>
+            <div style="color: #718096; font-size: 13px; margin-bottom: 20px;">Impacto de las variables de entrada en el Gasto Inicial</div>
+            """, unsafe_allow_html=True)
+            
+            if corrs:
+                sorted_corrs = dict(sorted(corrs.items(), key=lambda item: abs(item[1])))
+                labels = list(sorted_corrs.keys())
+                values = list(sorted_corrs.values())
+                colors = ['#e53e3e' if v < 0 else '#3182ce' for v in values]
+                
+                fig2 = go.Figure(go.Bar(
+                    x=values,
+                    y=labels,
+                    orientation='h',
+                    marker_color=colors,
+                    text=[f"{v:.2f}" for v in values],
+                    textposition='outside'
+                ))
+                fig2.update_layout(
+                    margin=dict(l=10, r=30, t=10, b=10),
+                    plot_bgcolor='white',
+                    xaxis=dict(showgrid=True, gridcolor='#edf2f7', range=[-1.1, 1.1], zeroline=True, zerolinecolor='black'),
+                    height=300
+                )
+                st.plotly_chart(fig2, use_container_width=True)
+                
+            # Calculadora Probabilística
+            if not fit_df.empty:
+                st.markdown("<hr style='margin: 30px 0px;'>", unsafe_allow_html=True)
+                st.markdown("""
+                <div style="font-weight: bold; color: #2d3748; font-size: 18px;">Calculadora (Percentiles y Valores)</div>
+                <div style="color: #718096; font-size: 13px; margin-bottom: 20px;">Relación probabilística basada en la distribución ajustada</div>
+                """, unsafe_allow_html=True)
+                
+                calc_c1, calc_c2 = st.columns(2)
+                with calc_c1:
+                    st.markdown("<div style='font-size: 14px; font-weight: 500; color: #4a5568;'>Percentil → Valor (PPF)</div>", unsafe_allow_html=True)
+                    p_input = st.number_input("Percentil (%)", min_value=0.01, max_value=99.99, value=50.0, step=1.0, key="calc_p")
+                    calc_val = dist_obj.ppf(p_input / 100.0, *best_dist_params)
+                    st.success(f"Valor estimado a P{p_input}: **{calc_val:.2f} {unidad_q}**")
+                    
+                with calc_c2:
+                    st.markdown("<div style='font-size: 14px; font-weight: 500; color: #4a5568;'>Valor → Percentil (CDF)</div>", unsafe_allow_html=True)
+                    v_input = st.number_input(f"Valor de la Variable ({unidad_q})", value=float(mean_q), step=10.0, key="calc_v")
+                    calc_perc = dist_obj.cdf(v_input, *best_dist_params) * 100.0
+                    st.info(f"Percentil estimado: **{calc_perc:.4f}%**")
         else:
             st.info("Configure las distribuciones de las variables a la izquierda y presione 'Ejecutar Simulación IPR'.")
