@@ -4,6 +4,7 @@ from pathlib import Path
 from src.ui.module_ipr import render_ipr_module
 from src.ui.module_dca import render_dca_module
 from src.ui.module_char import render_characterization_module # New Support Module
+from src.ui.module_nodal import render_nodal_module # NEW MODULE III
 
 def get_base64_of_bin_file(bin_file):
     with open(bin_file, 'rb') as f:
@@ -119,7 +120,7 @@ def render_dashboard():
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 5px;'>", unsafe_allow_html=True)
     
     # Custom Tabs
-    tab0, tab1, tab2 = st.tabs(["[Soporte] Módulo 0: Caracterización", "Módulo I: Afluencia (IPR)", "Módulo II: Pronóstico (DCA)"])
+    tab0, tab1, tab_nodal, tab2 = st.tabs(["[Soporte] Módulo 0: Caracterización", "Módulo I: Afluencia (IPR)", "Módulo III: Análisis Nodal", "Módulo II: Pronóstico (DCA)"])
     
     sys_str = "english" if sistema_unidades == "Inglés" else "international"
     
@@ -128,6 +129,10 @@ def render_dashboard():
         
     with tab1:
         render_ipr_module(fluido, modelo, iteraciones, sys_str)
+        
+    with tab_nodal:
+        ipr_calc_results = st.session_state.get('ipr_calc_results', None)
+        render_nodal_module(fluido, ipr_calc_results, iteraciones, sys_str)
         
     with tab2:
         render_dca_module(fluido, iteraciones)
